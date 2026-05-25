@@ -2,6 +2,8 @@
 
 Python bindings for [Wt (Web Toolkit)](https://www.webtoolkit.eu/wt) — a C++ widget-tree web framework — generated with [nanobind](https://github.com/wjakob/nanobind) and built against C++23.
 
+> **Independent, unofficial wrapper.** witty_for_python is a personal project by [Adam DePrince](https://adamdeprince.com). It is **not** produced by, endorsed by, sponsored by, or otherwise affiliated with Emweb bv, the authors and copyright holders of Wt. "Wt" is referenced here only in its descriptive sense — to identify the library this software wraps — and remains the property of Emweb. For Wt itself (source, official binaries, support, commercial licensing), go directly to [www.webtoolkit.eu/wt](https://www.webtoolkit.eu/wt).
+
 ## Status
 
 Pre-alpha scaffold. Initial bindings cover:

@@ -1,9 +1,19 @@
 witty_for_python is dual-licensed.
 
-It is a Python binding for Wt (the Web Toolkit, https://www.webtoolkit.eu/wt),
-which is itself dual-licensed by Emweb bv under (a) the GNU General Public
-License version 2 only, with an OpenSSL linking exception, or (b) a
-commercial license. witty_for_python's licensing mirrors that choice:
+Disclaimer of affiliation. witty_for_python is an independent project by
+Adam DePrince. It is not produced by, endorsed by, sponsored by, or
+otherwise affiliated with Emweb bv, the authors and copyright holders of
+Wt. "Wt" appears in this software's name and documentation only in its
+descriptive sense, to identify the library this software wraps; it remains
+the property of Emweb. The license terms set out below grant no rights of
+any kind to Wt itself — those terms are between you and Emweb, and must
+be obtained directly from Emweb at https://www.webtoolkit.eu/wt.
+
+witty_for_python is a Python binding for Wt (the Web Toolkit,
+https://www.webtoolkit.eu/wt), which is itself dual-licensed by Emweb bv
+under (a) the GNU General Public License version 2 only, with an OpenSSL
+linking exception, or (b) a commercial license. witty_for_python's
+licensing mirrors that choice:
 
 (a) GNU General Public License, Version 2 only, as reproduced in full below.
     Use this option when you are linking against, distributing, or otherwise
