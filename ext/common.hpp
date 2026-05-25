@@ -1,0 +1,53 @@
+#pragma once
+
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
+#include <nanobind/stl/unique_ptr.h>
+#include <nanobind/stl/shared_ptr.h>
+#include <nanobind/stl/function.h>
+
+#include <Wt/WString.h>
+
+#include <string>
+
+namespace nb = nanobind;
+
+// Transparently convert Wt::WString <-> Python str. Wt uses WString everywhere
+// for i18n; surfacing it as native str keeps the Python API ergonomic.
+namespace nanobind::detail {
+template <> struct type_caster<Wt::WString> {
+    NB_TYPE_CASTER(Wt::WString, const_name("str"))
+
+    bool from_python(handle src, uint8_t, cleanup_list*) noexcept {
+        if (!PyUnicode_Check(src.ptr())) return false;
+        Py_ssize_t size = 0;
+        const char* str = PyUnicode_AsUTF8AndSize(src.ptr(), &size);
+        if (!str) { PyErr_Clear(); return false; }
+        value = Wt::WString::fromUTF8(std::string(str, static_cast<size_t>(size)));
+        return true;
+    }
+
+    static handle from_cpp(const Wt::WString& src, rv_policy, cleanup_list*) noexcept {
+        std::string utf8 = src.toUTF8();
+        return PyUnicode_FromStringAndSize(
+            utf8.data(), static_cast<Py_ssize_t>(utf8.size()));
+    }
+};
+}  // namespace nanobind::detail
+
+namespace pywitty {
+
+using namespace nb::literals;
+
+void register_signals(nb::module_& m);
+void register_application(nb::module_& m);
+void register_container(nb::module_& m);
+void register_widgets(nb::module_& m);
+void register_form(nb::module_& m);
+void register_navigation(nb::module_& m);
+void register_table(nb::module_& m);
+void register_layout(nb::module_& m);
+void register_server(nb::module_& m);
+
+}  // namespace pywitty
