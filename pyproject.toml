@@ -24,8 +24,21 @@ classifiers = [
   "Topic :: Software Development :: Libraries",
 ]
 
+[project.optional-dependencies]
+test = ["pytest >=8"]
+
 [project.urls]
 "Wt upstream" = "https://www.webtoolkit.eu/wt"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = [
+  # Wt's free-threaded build (3.13t / 3.14t) is still experimental in nanobind
+  # 2.12 and surfaces some warnings from CPython itself. Silence the noise so
+  # real failures stand out.
+  "ignore::DeprecationWarning:nanobind",
+]
 
 [tool.scikit-build]
 minimum-version = "0.10"
