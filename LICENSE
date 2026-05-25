@@ -11,9 +11,9 @@ commercial license. witty_for_python's licensing mirrors that choice:
     (this matches Wt's own terms; see https://www.webtoolkit.eu/wt for Wt's
     license).
 
-(b) A commercial license from Adam DePrince <adam.deprince@gmail.com>.
-    Required if you are using Wt under Emweb's commercial license. Contact
-    the author to obtain terms.
+(b) A commercial license from Adam DePrince (contact information at
+    https://adamdeprince.com). Required if you are using Wt under Emweb's
+    commercial license. Contact the author to obtain terms.
 
     The two commercial licenses are independent. A Wt commercial license
     from Emweb does NOT grant you any commercial rights to witty_for_python.
