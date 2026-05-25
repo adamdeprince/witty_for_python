@@ -113,4 +113,14 @@ You may also call `witty_for_python._cleanup_signal_slots()` directly between te
 
 ## License
 
-Wt is dual-licensed (GPL / commercial). Pick a license for this wrapper compatible with your Wt license before distributing.
+witty_for_python is dual-licensed, mirroring Wt's own dual license:
+
+- **GPL path** — if you use Wt under its GNU GPL Version 2 license, witty_for_python is also available to you under the GNU GPL Version 2 (only). The full text is in [LICENSE](LICENSE). Wt specifies "Other versions of the GPL do not apply" and witty_for_python follows the same restriction.
+
+- **Commercial path** — if you use Wt under [Emweb's commercial license](https://www.webtoolkit.eu/wt/license), you must obtain a separate commercial license for witty_for_python from Adam DePrince &lt;adam.deprince@gmail.com&gt;.
+
+  **The two commercial licenses are independent.** A Wt commercial license from Emweb does **not** grant you any commercial rights to witty_for_python. A witty_for_python commercial license from Adam DePrince does **not** grant you any commercial rights to Wt. To ship a closed-source product on top of this stack you need *both* commercial licenses; either one alone is insufficient. The two licenses are negotiated separately with their respective copyright holders.
+
+When you redistribute witty_for_python you choose one of these two options (GPL or commercial) and obey its terms. Your choice doesn't need to match what downstream users of your software do; each redistributor makes their own choice.
+
+Copyright (C) 2026 Adam DePrince. All rights reserved.

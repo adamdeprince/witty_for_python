@@ -9,6 +9,8 @@ description = "Python bindings for the Wt (Web Toolkit) C++ library, generated w
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Adam DePrince", email = "adam.deprince@gmail.com" }]
+license = "GPL-2.0-only"
+license-files = ["LICENSE"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Intended Audience :: Developers",
