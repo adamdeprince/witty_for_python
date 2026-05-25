@@ -1,4 +1,12 @@
-witty_for_python is dual-licensed.
+witty_for_python is licensed under the GNU General Public License,
+Version 2 only, as reproduced in full below. Other versions of the GPL
+do not apply (this matches Wt's own terms; see https://www.webtoolkit.eu/wt
+for Wt's license).
+
+A Wt commercial license obtained from Emweb does NOT grant any commercial
+license to witty_for_python. The two are independent works with
+independent copyright holders; a license to one is not a license to the
+other. witty_for_python is currently available only under GPLv2.
 
 Disclaimer of affiliation. witty_for_python is an independent project by
 Adam DePrince. It is not produced by, endorsed by, sponsored by, or
@@ -8,35 +16,6 @@ descriptive sense, to identify the library this software wraps; it remains
 the property of Emweb. The license terms set out below grant no rights of
 any kind to Wt itself — those terms are between you and Emweb, and must
 be obtained directly from Emweb at https://www.webtoolkit.eu/wt.
-
-witty_for_python is a Python binding for Wt (the Web Toolkit,
-https://www.webtoolkit.eu/wt), which is itself dual-licensed by Emweb bv
-under (a) the GNU General Public License version 2 only, with an OpenSSL
-linking exception, or (b) a commercial license. witty_for_python's
-licensing mirrors that choice:
-
-(a) GNU General Public License, Version 2 only, as reproduced in full below.
-    Use this option when you are linking against, distributing, or otherwise
-    using Wt under its GPLv2 license. Other versions of the GPL do not apply
-    (this matches Wt's own terms; see https://www.webtoolkit.eu/wt for Wt's
-    license).
-
-(b) A commercial license from Adam DePrince (contact information at
-    https://adamdeprince.com). Required if you are using Wt under Emweb's
-    commercial license. Contact the author to obtain terms.
-
-    The two commercial licenses are independent. A Wt commercial license
-    from Emweb does NOT grant you any commercial rights to witty_for_python.
-    A witty_for_python commercial license from Adam DePrince does NOT grant
-    you any commercial rights to Wt. To ship a closed-source product on top
-    of this stack you need BOTH commercial licenses; either one alone is
-    insufficient. The two licenses are negotiated separately with their
-    respective copyright holders.
-
-When redistributing witty_for_python, you must select one of (a) or (b) and
-obey its terms in full. Your choice does not have to match what your
-downstream users do with witty_for_python or with Wt; each redistributor
-makes their own choice.
 
 Copyright (C) 2026 Adam DePrince. All rights reserved.
 
