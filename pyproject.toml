@@ -1,0 +1,38 @@
+[build-system]
+requires = ["scikit-build-core >=0.10", "nanobind >=2.4"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "witty_for_python"
+version = "0.1.0"
+description = "Python bindings for the Wt (Web Toolkit) C++ library, generated with nanobind."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Adam DePrince", email = "adam.deprince@gmail.com" }]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: C++",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Software Development :: Libraries",
+]
+
+[project.urls]
+"Wt upstream" = "https://www.webtoolkit.eu/wt"
+
+[tool.scikit-build]
+minimum-version = "0.10"
+build-dir = "build/{wheel_tag}"
+cmake.build-type = "Release"
+cmake.version = ">=3.26"
+wheel.packages = ["src/witty_for_python"]
+# Re-run CMake configure when these change.
+cmake.args = []
+
+[tool.scikit-build.cmake.define]
+CMAKE_CXX_STANDARD = "23"
