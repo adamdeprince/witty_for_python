@@ -9,6 +9,10 @@
 
 #include <Wt/WString.h>
 
+// Bring in datetime casters so every binding file sees Wt::WDate / WTime /
+// WDateTime as Python `datetime.date` / `time` / `datetime`.
+#include "datetime_caster.hpp"
+
 #include <string>
 
 namespace nb = nanobind;
@@ -46,6 +50,7 @@ void register_validators(nb::module_& m);
 void register_container(nb::module_& m);
 void register_widgets(nb::module_& m);
 void register_form(nb::module_& m);
+void register_datetime(nb::module_& m);
 void register_navigation(nb::module_& m);
 void register_table(nb::module_& m);
 void register_layout(nb::module_& m);

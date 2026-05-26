@@ -17,6 +17,7 @@ to override.
 
 from __future__ import annotations
 
+import datetime
 import sys
 
 import witty_for_python as wt
@@ -70,6 +71,21 @@ def make_form_tab() -> wt.WContainerWidget:
     email = c.add_widget(wt.WLineEdit())
     email.placeholder = "you@example.com"
     email.set_validator(wt.WEmailValidator())
+    c.add_widget(wt.WBreak())
+
+    c.add_widget(wt.WLabel("Birthday:"))
+    birthday = c.add_widget(wt.WDateEdit())
+    # Python datetime.date passes through the caster transparently — no
+    # wt.WDate Python type involved.
+    birthday.date = datetime.date(2000, 1, 1)
+    birthday.set_validator(wt.WDateValidator(
+        datetime.date(1900, 1, 1), datetime.date.today()
+    ))
+    c.add_widget(wt.WBreak())
+
+    c.add_widget(wt.WLabel("Preferred time:"))
+    pref_time = c.add_widget(wt.WTimeEdit())
+    pref_time.time = datetime.time(9, 0)
     c.add_widget(wt.WBreak())
 
     c.add_widget(wt.WLabel("Notes:"))

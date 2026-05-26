@@ -16,6 +16,9 @@ NB_MODULE(_witty_for_python, m) {
     witty_for_python::register_container(m);
     witty_for_python::register_widgets(m);
     witty_for_python::register_form(m);
+    // Date/time widgets (WDateEdit, WTimeEdit) extend WLineEdit, so they
+    // need bind_widgets registered first.
+    witty_for_python::register_datetime(m);
     witty_for_python::register_navigation(m);
     witty_for_python::register_table(m);
     witty_for_python::register_layout(m);
@@ -39,4 +42,13 @@ NB_MODULE(_witty_for_python, m) {
           [](const Wt::WLink& l) { return l.url(); },
           nb::arg("link"),
           "Return the URL of a WLink (str auto-converts via nb::init_implicit).");
+
+    // datetime caster round-trip helpers — also used by tests to verify the
+    // WDate / WTime / WDateTime casters without setting up a WApplication.
+    m.def("_round_trip_date",
+          [](const Wt::WDate& d) { return d; }, nb::arg("date"));
+    m.def("_round_trip_time",
+          [](const Wt::WTime& t) { return t; }, nb::arg("time"));
+    m.def("_round_trip_datetime",
+          [](const Wt::WDateTime& dt) { return dt; }, nb::arg("dt"));
 }
