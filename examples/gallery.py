@@ -675,10 +675,27 @@ def make_modelview_tab() -> wt.WContainerWidget:
             wt.WStandardItem(city),
         ])
 
+    # Slot a sort/filter proxy between the model and the view. Typing in
+    # the filter box below mutates the proxy's regex, immediately reducing
+    # the visible rows (dynamic_sort_filter=True). Click maps go through
+    # the proxy to find the original row in the underlying model.
+    proxy = wt.WSortFilterProxyModel()
+    proxy.dynamic_sort_filter = True
+    proxy.source_model = model
+    proxy.filter_key_column = 1   # filter by Role
+
+    c.add_widget(
+        "<p>Filter on the Role column (regex, full-string match — wrap "
+        "with <code>.*</code> for substring):</p>")
+    filter_edit = c.add_widget(wt.WLineEdit())
+    filter_edit.placeholder_text = ".*Engineer.*"
+
+    def on_filter_changed() -> None:
+        proxy.set_filter_regexp(filter_edit.text)
+    filter_edit.text_input.connect(on_filter_changed)
+
     table = c.add_widget(wt.WTableView())
-    table.model = model
-    # WLength binding hasn't landed yet — column widths default to Wt's
-    # ~150px each, which fits the gallery layout.
+    table.model = proxy
     table.sorting_enabled = True
     table.column_resize_enabled = True
     table.selection_mode = wt.SelectionMode.Single
@@ -686,15 +703,17 @@ def make_modelview_tab() -> wt.WContainerWidget:
 
     log = c.add_widget(wt.WText("<i>(click a cell)</i>"))
 
-    def on_click(index: wt.WModelIndex, _event: wt.WMouseEvent) -> None:
-        if not index.is_valid:
+    def on_click(proxy_idx: wt.WModelIndex, _event: wt.WMouseEvent) -> None:
+        if not proxy_idx.is_valid:
             log.text = "<i>(invalid index)</i>"
             return
-        # Fetch the item via the model's item() accessor — the value at the
-        # Display role is what was shown in the cell.
-        value = model.display_data(index)
+        # Click coordinates are in the proxy's frame; map back to the
+        # source to fetch the underlying item.
+        source_idx = proxy.map_to_source(proxy_idx)
+        value = model.display_data(source_idx)
         log.text = (
-            f"clicked row=<b>{index.row}</b>, col=<b>{index.column}</b>: "
+            f"clicked proxy row=<b>{proxy_idx.row}</b> → source row="
+            f"<b>{source_idx.row}</b>, col=<b>{source_idx.column}</b>: "
             f"<code>{value}</code>")
     table.clicked.connect(on_click)
 

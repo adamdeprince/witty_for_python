@@ -40,6 +40,9 @@ NB_MODULE(_witty_for_python, m) {
     // WSuggestionPopup.set_model takes a shared_ptr<WAbstractItemModel>,
     // and that base class is bound here.
     witty_for_python::register_modelview(m);
+    // Proxy models (sort/filter, identity, read-only) sit on top of the
+    // model/view base classes registered above.
+    witty_for_python::register_modelview_proxy(m);
     // Extra form widgets — most extend WLineEdit / WTextArea /
     // WFormWidget, so they need register_form already run.
     witty_for_python::register_extra_form(m);
