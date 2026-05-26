@@ -466,6 +466,61 @@ def make_upload_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_filedrop_tab() -> wt.WContainerWidget:
+    """Drag-and-drop file uploads via WFileDropWidget.
+
+    The widget shows a styled dropzone; drag a file (or several) onto it
+    and the browser starts uploading sequentially. We connect to ``drop``
+    (fires with the list of newly-introduced ``File`` entries) and
+    ``uploaded`` (fires per file when the bytes finish landing) to keep a
+    log of what's happening.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>WFileDropWidget</h3>")
+    c.add_widget(
+        "<p>Drag files into the dashed area below. Each drop triggers the "
+        "<code>drop</code> signal with a list of <code>File</code> entries; "
+        "each individual byte-transfer completion triggers <code>uploaded</code> "
+        "with a single <code>File</code> reference. Clicking the widget "
+        "opens the native file picker as a fallback.</p>")
+
+    drop = c.add_widget(wt.WFileDropWidget())
+    drop.set_filters(".csv,.txt,.json,image/*")
+    drop.add_widget("<i>Drop files here</i>")
+    # Visual cue — the default CSS class is 'Wt-filedropzone'; we add a
+    # dashed border so the dropzone is obviously a target without the
+    # Bootstrap theme having to know about us.
+    drop.style_class = "Wt-filedropzone"
+
+    log = c.add_widget(wt.WText("<i>(waiting for a drop)</i>"))
+    state = {"received": 0}
+
+    def on_drop(files: list) -> None:
+        names = ", ".join(f.client_file_name for f in files)
+        log.text = f"queued {len(files)} file(s): <b>{names}</b>"
+
+    def on_uploaded(f) -> None:
+        state["received"] += 1
+        log.text = (
+            f"uploaded <b>{f.client_file_name}</b> "
+            f"({f.size}&nbsp;bytes, {f.mime_type}); "
+            f"{state['received']} total this session")
+
+    def on_too_large(f, size: int) -> None:
+        log.text = (
+            f"rejected <b>{f.client_file_name}</b>: "
+            f"{size}&nbsp;bytes exceeds server limit")
+
+    def on_upload_failed(f) -> None:
+        log.text = f"upload failed for <b>{f.client_file_name}</b>"
+
+    drop.drop.connect(on_drop)
+    drop.uploaded.connect(on_uploaded)
+    drop.too_large.connect(on_too_large)
+    drop.upload_failed.connect(on_upload_failed)
+    return c
+
+
 def make_extras_tab() -> wt.WContainerWidget:
     """Form widgets that didn't make the first pass.
 
@@ -592,6 +647,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_template_tab(), "Template")
     tabs.add_tab(make_resources_tab(), "Resources")
     tabs.add_tab(make_upload_tab(), "Upload")
+    tabs.add_tab(make_filedrop_tab(), "Drop zone")
     tabs.add_tab(make_extras_tab(), "Extras")
     tabs.add_tab(make_timer_tab(), "Timer")
 

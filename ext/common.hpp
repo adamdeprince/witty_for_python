@@ -59,6 +59,7 @@ void register_themes(nb::module_& m);
 void register_timer(nb::module_& m);
 void register_upload(nb::module_& m);
 void register_extra_form(nb::module_& m);
+void register_filedrop(nb::module_& m);
 void register_table(nb::module_& m);
 void register_layout(nb::module_& m);
 void register_server(nb::module_& m);

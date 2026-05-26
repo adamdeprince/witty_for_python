@@ -37,12 +37,10 @@ void register_upload(nb::module_& m) {
     //      arrived; read them from `spool_file_name` (single upload) or
     //      walk `uploaded_files` (multi).
     //
-    // Bound signals: `changed` and `uploaded` (both EventSignal<>).
-    // NOT YET BOUND: `file_too_large` (JSignal<int64>) and `data_received`
-    // (Signal<uint64,uint64>) — those need new signal-payload bindings.
-    // Without them you still get end-of-upload notification but no progress
-    // ticks and no oversize callback (oversize uploads are silently dropped;
-    // check `empty()` after `uploaded` to detect the case).
+    // Bound signals: `changed`, `uploaded` (both EventSignal<>),
+    // `file_too_large` (JInt64Signal — fires with the offending size in
+    // bytes), and `data_received` (Uint64PairSignal — fires periodically
+    // during a long upload with (received, total) byte counts).
 
     nb::class_<Wt::WFileUpload, Wt::WWidget>(m, "WFileUpload")
         .def(nb::init<>())
@@ -87,7 +85,19 @@ void register_upload(nb::module_& m) {
         .def_prop_ro("uploaded", &Wt::WFileUpload::uploaded,
                      nb::rv_policy::reference_internal,
                      "EventSignal[] — fires when an upload finishes, "
-                     "successful or not. Check `empty` to distinguish.");
+                     "successful or not. Check `empty` to distinguish.")
+        .def_prop_ro("file_too_large", &Wt::WFileUpload::fileTooLarge,
+                     nb::rv_policy::reference_internal,
+                     "JInt64Signal — fires with the rejected file's size "
+                     "in bytes when the user tried to upload more than the "
+                     "configured max-request-size. The upload itself was "
+                     "discarded server-side.")
+        .def_prop_ro("data_received", &Wt::WFileUpload::dataReceived,
+                     nb::rv_policy::reference_internal,
+                     "Uint64PairSignal — fires periodically during a long "
+                     "upload with (bytes_received, bytes_total). Wire up "
+                     "before calling upload() and pair with set_progress_bar "
+                     "for a built-in progress UI.");
 }
 
 }  // namespace witty_for_python

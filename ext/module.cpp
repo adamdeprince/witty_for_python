@@ -39,6 +39,10 @@ NB_MODULE(_witty_for_python, m) {
     // Extra form widgets — most extend WLineEdit / WTextArea /
     // WFormWidget, so they need register_form already run.
     witty_for_python::register_extra_form(m);
+    // WFileDropWidget + the File* signal types — depends on
+    // WContainerWidget (register_container) and on UploadedFile being
+    // bound (register_upload, since the File class returns it).
+    witty_for_python::register_filedrop(m);
 
     // Module-level helpers used by the Python atexit handler in
     // witty_for_python/__init__.py to drop every Python-callable connection before

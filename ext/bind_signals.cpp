@@ -3,6 +3,7 @@
 
 #include <Wt/WEvent.h>
 #include <Wt/WGlobal.h>     // Key, KeyboardModifier, MouseButton
+#include <Wt/WJavaScript.h> // JSignal
 #include <Wt/WSignal.h>
 #include <Wt/WString.h>
 
@@ -297,6 +298,42 @@ void register_signals(nb::module_& m) {
             }, "callable"_a)
         .def("disconnect_all_slots",
             [](Wt::EventSignal<Wt::WKeyEvent>& s) {
+                connection_registry_disconnect_all(&s);
+            });
+
+    // ---- 64-bit / pair signals used by WFileUpload + WFileDropWidget ----
+    //
+    // No constructors are bound: these are always created C++-side as
+    // members of widgets. JSignal has no public default ctor anyway
+    // (requires a parent WObject + a JS name).
+
+    // JSignal<long long> — file-too-large carries the rejected upload's
+    // size in bytes. Used by WFileUpload.file_too_large.
+    nb::class_<Wt::JSignal<long long>>(m, "JInt64Signal")
+        .def("connect",
+            [](Wt::JSignal<long long>& s, nb::callable cb) {
+                return py_connect<Wt::JSignal<long long>, long long>(
+                    s, std::move(cb));
+            }, "callable"_a)
+        .def("disconnect_all_slots",
+            [](Wt::JSignal<long long>& s) {
+                connection_registry_disconnect_all(&s);
+            });
+
+    // Signal<unsigned long long, unsigned long long> — upload-progress
+    // ticks: (bytes received so far, total bytes). Used by
+    // WFileUpload.data_received and WFileDropWidget.File.data_received.
+    nb::class_<Wt::Signal<unsigned long long, unsigned long long>>(
+        m, "Uint64PairSignal")
+        .def("connect",
+            [](Wt::Signal<unsigned long long, unsigned long long>& s,
+               nb::callable cb) {
+                return py_connect<
+                    Wt::Signal<unsigned long long, unsigned long long>,
+                    unsigned long long, unsigned long long>(s, std::move(cb));
+            }, "callable"_a)
+        .def("disconnect_all_slots",
+            [](Wt::Signal<unsigned long long, unsigned long long>& s) {
                 connection_registry_disconnect_all(&s);
             });
 }
