@@ -43,6 +43,10 @@ NB_MODULE(_witty_for_python, m) {
     // WContainerWidget (register_container) and on UploadedFile being
     // bound (register_upload, since the File class returns it).
     witty_for_python::register_filedrop(m);
+    // Navigation chrome (WPopupMenu, WNavigationBar, WToolBar, WBadge,
+    // WSplitButton) — depends on WMenu, WTemplate, WText, WPushButton,
+    // which are all registered above.
+    witty_for_python::register_chrome(m);
 
     // Module-level helpers used by the Python atexit handler in
     // witty_for_python/__init__.py to drop every Python-callable connection before

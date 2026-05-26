@@ -32,6 +32,7 @@ to install or download at runtime.
 """
 
 from ._witty_for_python import (
+    AlignmentFlag,
     ContentDisposition,
     DateSignal,
     FileListSignal,
@@ -67,6 +68,7 @@ from ._witty_for_python import (
     WPasswordEdit,
     WRegExpValidator,
     WResource,
+    WSplitButton,
     WStackedValidator,
     WStreamResource,
     WSuggestionPopup,
@@ -103,6 +105,7 @@ from ._witty_for_python import (
     StringSignal,
     WAnchor,
     WApplication,
+    WBadge,
     WBoxLayout,
     WBreak,
     WButtonGroup,
@@ -127,8 +130,11 @@ from ._witty_for_python import (
     WMenuItem,
     WMessageBox,
     WMouseEvent,
+    WNavigationBar,
     WObject,
     WPanel,
+    WPoint,
+    WPopupMenu,
     WProgressBar,
     WPushButton,
     WRadioButton,
@@ -144,6 +150,7 @@ from ._witty_for_python import (
     WTabWidget,
     WText,
     WTextArea,
+    WToolBar,
     WVBoxLayout,
     WWidget,
 )
@@ -199,6 +206,7 @@ def update_lock(application: WApplication) -> _Iterator[bool]:
         del lock
 
 __all__ = [
+    "AlignmentFlag",
     "BoolSignal",
     "Connection",
     "ContentDisposition",
@@ -239,6 +247,7 @@ __all__ = [
     "ValidationState",
     "WAnchor",
     "WApplication",
+    "WBadge",
     "WBootstrap5Theme",
     "WBoxLayout",
     "WBreak",
@@ -263,6 +272,7 @@ __all__ = [
     "WPasswordEdit",
     "WRegExpValidator",
     "WResource",
+    "WSplitButton",
     "WStackedValidator",
     "WStreamResource",
     "WSuggestionPopup",
@@ -289,8 +299,11 @@ __all__ = [
     "WMenuItem",
     "WMessageBox",
     "WMouseEvent",
+    "WNavigationBar",
     "WObject",
     "WPanel",
+    "WPoint",
+    "WPopupMenu",
     "WProgressBar",
     "WPushButton",
     "WRadioButton",
@@ -304,6 +317,7 @@ __all__ = [
     "WTableColumn",
     "WTableRow",
     "WTabWidget",
+    "WToolBar",
     "WTemplate",
     "WText",
     "WTextArea",

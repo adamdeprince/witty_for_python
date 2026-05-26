@@ -641,6 +641,74 @@ def make_timer_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_chrome_tab() -> wt.WContainerWidget:
+    """Navigation chrome: WNavigationBar, WToolBar, WPopupMenu, WSplitButton,
+    WBadge.
+
+    The nav-bar at the top hosts a title link plus a menu and a search
+    field. Below it, a toolbar lined with WPushButtons and a WSplitButton
+    demonstrates the chrome surface. The split button's dropdown is a
+    WPopupMenu wired to a log line. A WBadge counts dropdown selections.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>Navigation chrome</h3>")
+
+    # ---- WNavigationBar ----
+    nav = c.add_widget(wt.WNavigationBar())
+    nav.set_title("witty_for_python", wt.WLink("https://adamdeprince.com"))
+    nav.set_responsive(True)
+
+    # The nav-bar's menu needs a WStackedWidget so item selection can swap
+    # an associated contents pane. Here we keep the menu purely decorative
+    # — the stack is empty.
+    contents = c.add_widget(wt.WStackedWidget())
+    contents.hidden = True   # we don't actually show items
+    nav_menu = nav.add_menu(wt.WMenu(contents))
+    nav_menu.add_item("Home")
+    nav_menu.add_item("Docs")
+    nav_menu.add_item("About")
+
+    search = nav.add_search(wt.WLineEdit(), wt.AlignmentFlag.Right)
+    search.placeholder_text = "search…"
+
+    # ---- WToolBar ----
+    c.add_widget("<h4>WToolBar</h4>")
+    tools = c.add_widget(wt.WToolBar())
+
+    log = c.add_widget(wt.WText("<i>(no toolbar action yet)</i>"))
+    counter_badge = c.add_widget(wt.WBadge("0"))
+
+    state = {"hits": 0}
+
+    def hit(label: str) -> None:
+        state["hits"] += 1
+        counter_badge.text = str(state["hits"])
+        log.text = f"clicked <b>{label}</b>"
+
+    for label in ("Save", "Reload"):
+        btn = tools.add_button(wt.WPushButton(label))
+        btn.clicked.connect(lambda label=label: hit(label))
+
+    tools.add_separator()
+
+    # ---- WSplitButton with a WPopupMenu dropdown ----
+    split = tools.add_button(wt.WSplitButton("Export"))
+    split.action_button.clicked.connect(lambda: hit("Export (default)"))
+
+    menu = wt.WPopupMenu()
+    for fmt in ("CSV", "JSON", "PDF", "XLSX"):
+        item = menu.add_item(fmt)
+        # MenuItem.triggered is a per-item click; we use the menu-level
+        # triggered signal below for the generic case.
+        del item
+    def on_menu_pick(item: wt.WMenuItem) -> None:
+        hit(f"Export → {item.text}")
+    menu.triggered.connect(on_menu_pick)
+    split.set_menu(menu)
+
+    return c
+
+
 # ---- Application factory + server bootstrap ----
 
 def create_app(env: wt.WEnvironment) -> wt.WApplication:
@@ -667,6 +735,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_upload_tab(), "Upload")
     tabs.add_tab(make_filedrop_tab(), "Drop zone")
     tabs.add_tab(make_extras_tab(), "Extras")
+    tabs.add_tab(make_chrome_tab(), "Chrome")
     tabs.add_tab(make_timer_tab(), "Timer")
 
     # Apply Bootstrap5 theme so the gallery looks modern. The theme is owned
