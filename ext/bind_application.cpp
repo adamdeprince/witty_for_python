@@ -4,12 +4,13 @@
 #include <Wt/WWidget.h>
 #include <Wt/WInteractWidget.h>
 #include <Wt/WFormWidget.h>
+#include <Wt/WValidator.h>     // for WFormWidget::setValidator / validator / validated
 #include <Wt/WApplication.h>
 #include <Wt/WEnvironment.h>
 #include <Wt/WContainerWidget.h>
 #include <Wt/WLength.h>
 
-namespace pywitty {
+namespace witty_for_python {
 
 void register_application(nb::module_& m) {
     nb::class_<Wt::WEnvironment>(m, "WEnvironment")
@@ -77,12 +78,23 @@ void register_application(nb::module_& m) {
         .def_prop_ro("enter_pressed", &Wt::WInteractWidget::enterPressed,
                      nb::rv_policy::reference_internal);
 
+    // WFormWidget binds methods that take/return validator types (`set_validator`,
+    // `validator`, `validated`), so the validator family needs to be registered
+    // first. Slot it in here rather than from module.cpp so the order is
+    // visible at the consuming site.
+    register_validators(m);
+
     nb::class_<Wt::WFormWidget, Wt::WInteractWidget>(m, "WFormWidget")
         .def_prop_rw("enabled",
             [](const Wt::WFormWidget& w) { return w.isEnabled(); },
             [](Wt::WFormWidget& w, bool e) { w.setEnabled(e); })
         .def("set_focus", nb::overload_cast<>(&Wt::WFormWidget::setFocus))
         .def_prop_ro("changed", &Wt::WFormWidget::changed,
+                     nb::rv_policy::reference_internal)
+        // Validation wiring — types registered above by register_validators(m).
+        .def("set_validator", &Wt::WFormWidget::setValidator, "validator"_a)
+        .def_prop_ro("validator", &Wt::WFormWidget::validator)
+        .def_prop_ro("validated", &Wt::WFormWidget::validated,
                      nb::rv_policy::reference_internal);
 
     nb::class_<Wt::WApplication, Wt::WObject>(m, "WApplication")
@@ -109,7 +121,7 @@ void register_application(nb::module_& m) {
 
     // Cross-thread: hold this lock for exclusive access to an app from a
     // thread other than its session's worker thread. RAII — release happens
-    // when the Python wrapper is GC'd. Use `pywitty.update_lock(app)` for the
+    // when the Python wrapper is GC'd. Use `witty_for_python.update_lock(app)` for the
     // Pythonic context-manager form. WServer.post() is the recommended path
     // for most cross-thread work; UpdateLock is the lower-level escape hatch.
     nb::class_<Wt::WApplication::UpdateLock>(m, "UpdateLock")
@@ -122,4 +134,4 @@ void register_application(nb::module_& m) {
         });
 }
 
-}  // namespace pywitty
+}  // namespace witty_for_python

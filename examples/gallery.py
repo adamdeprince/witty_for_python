@@ -8,10 +8,11 @@ Python slot so the C++/Python signal bridge is exercised end-to-end.
 Run:
 
     python examples/gallery.py --docroot . \\
-        --http-address 127.0.0.1 --http-port 8080 \\
-        --resources-dir ~/.local/share/Wt/resources
+        --http-address 127.0.0.1 --http-port 8080
 
-Then open http://127.0.0.1:8080.
+Then open http://127.0.0.1:8080. Wt's static resources are bundled with the
+witty_for_python wheel and located automatically; pass --resources-dir only
+to override.
 """
 
 from __future__ import annotations
@@ -61,6 +62,14 @@ def make_form_tab() -> wt.WContainerWidget:
     name = c.add_widget(wt.WLineEdit())
     name.placeholder = "Your name"
     name_label.set_buddy(name)
+    # Demonstrate WFormWidget.set_validator: require 2-50 characters.
+    name.set_validator(wt.WLengthValidator(2, 50))
+    c.add_widget(wt.WBreak())
+
+    c.add_widget(wt.WLabel("Email:"))
+    email = c.add_widget(wt.WLineEdit())
+    email.placeholder = "you@example.com"
+    email.set_validator(wt.WEmailValidator())
     c.add_widget(wt.WBreak())
 
     c.add_widget(wt.WLabel("Notes:"))
@@ -334,6 +343,14 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
 
 
 def main(argv: list[str]) -> int:
+    # Default --resources-dir to the path bundled with witty_for_python. Wt
+    # needs it to serve its built-in CSS/JS/themes; the user no longer has to
+    # know where those live on disk. If they pass --resources-dir explicitly,
+    # we leave their value alone.
+    if not any(a == "--resources-dir" or a.startswith("--resources-dir=")
+               for a in argv[1:]):
+        argv = argv + ["--resources-dir", wt.resources_dir]
+
     server = wt.WServer()
     server.set_server_configuration(argv)
     server.add_entry_point(wt.EntryPointType.Application, create_app)

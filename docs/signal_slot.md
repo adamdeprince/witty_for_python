@@ -65,7 +65,7 @@ Protected by `std::mutex`. Two operations:
 - `connection_registry_disconnect_all(&sig)` — exposed per signal type as `sig.disconnect_all_slots()`.
 - `connection_registry_disconnect_all_signals()` — exposed at module scope as `_cleanup_all_connections`.
 
-`pywitty/__init__.py` registers `_cleanup_all_connections` as an `atexit` handler. Under clean shutdown the registry is flushed, all `shared_ptr<nb::object>` holders drop, and nanobind's leak detector finds nothing.
+`witty_for_python/__init__.py` registers `_cleanup_all_connections` as an `atexit` handler. Under clean shutdown the registry is flushed, all `shared_ptr<nb::object>` holders drop, and nanobind's leak detector finds nothing.
 
 **Do not** revert to enumerating signals via `gc.get_objects()` from Python — nanobind-bound instances are not GC-tracked, and they are not `weakref`-able either. The C++ side has to drive the cleanup. The registry is also useful for diagnostics: `_live_connection_count()` is exposed.
 

@@ -9,7 +9,7 @@
 #include <Wt/WVBoxLayout.h>
 #include <Wt/WWidget.h>
 
-namespace pywitty {
+namespace witty_for_python {
 
 void register_layout(nb::module_& m) {
     nb::class_<Wt::WLayout>(m, "WLayout");
@@ -67,4 +67,4 @@ void register_layout(nb::module_& m) {
         .def_prop_ro("column_count", &Wt::WGridLayout::columnCount);
 }
 
-}  // namespace pywitty
+}  // namespace witty_for_python

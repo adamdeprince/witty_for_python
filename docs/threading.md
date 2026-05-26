@@ -36,9 +36,10 @@ before writing anything that touches Wt from a non-Wt thread.
 
 ## What I did NOT do
 
-- **Did not patch Wt.** `~/.local/lib/libwt.so` and `libwthttp.so` are stock
-  Wt 4.13.2 built from the upstream tarball. Verified with `diff` against
-  the source.
+- **Did not patch Wt.** The `libwt.so` and `libwthttp.so` shipped inside the
+  wheel are built from the unmodified Wt source at the pinned submodule
+  commit (`extern/wt`). Any binary witty_for_python produces links exactly
+  that Wt commit — verifiable from the gitlink in our repo history.
 - **Did not add Python-side locks around signal emit.** A wrapper-level lock
   would (a) defeat the whole point of free-threading by serialising emits
   that Wt's session lock has already serialised, and (b) silently diverge
@@ -95,9 +96,9 @@ The relevant chunk of `CMakeLists.txt`:
 ```cmake
 if(Python_SOABI MATCHES "t$" OR Python_SOABI MATCHES "t-")
   message(STATUS "Building witty_for_python for free-threaded Python (${Python_SOABI})")
-  nanobind_add_module(_witty_for_python FREE_THREADED NB_STATIC ${PYWITTY_SOURCES})
+  nanobind_add_module(_witty_for_python FREE_THREADED NB_STATIC ${WITTY_FOR_PYTHON_SOURCES})
 else()
-  nanobind_add_module(_witty_for_python STABLE_ABI NB_STATIC ${PYWITTY_SOURCES})
+  nanobind_add_module(_witty_for_python STABLE_ABI NB_STATIC ${WITTY_FOR_PYTHON_SOURCES})
 endif()
 ```
 

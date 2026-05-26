@@ -32,14 +32,18 @@ def _fresh_connection_registry() -> Iterator[None]:
 def wt_resources_dir() -> Path:
     """Path to Wt's static resources (CSS, JS, themes).
 
-    Installed by `cmake --install` from the Wt source build into
-    `~/.local/share/Wt/resources`. The gallery / hello server need this.
-    Tests that don't need a running server should not depend on this fixture.
+    Resolves to the resources directory the wheel bundles alongside the
+    extension — `witty_for_python.resources_dir`. No external install needed.
     """
-    candidate = Path.home() / ".local" / "share" / "Wt" / "resources"
-    if not candidate.is_dir():
-        pytest.skip(f"Wt resources not found at {candidate} — see docs/building_wt.md")
-    return candidate
+    import witty_for_python as wt
+
+    path = Path(wt.resources_dir)
+    if not path.is_dir():
+        pytest.skip(
+            f"Bundled Wt resources missing at {path} — rebuild with "
+            "`pip install --no-build-isolation -e .`"
+        )
+    return path
 
 
 @pytest.fixture

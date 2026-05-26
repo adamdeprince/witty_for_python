@@ -272,7 +272,7 @@ C++ naming → Python naming:
 | `ext/bind_layout.cpp` | WLayout, WBoxLayout, WHBoxLayout, WVBoxLayout, WGridLayout; LayoutDirection enum |
 | `ext/bind_server.cpp` | WServer, EntryPointType, post/post_all |
 
-When you add a new binding source: append it to `PYWITTY_SOURCES` in `CMakeLists.txt`, add a `register_xxx` declaration in `ext/common.hpp` *inside the `witty_for_python` namespace*, call it from `NB_MODULE` in `ext/module.cpp` after its base classes are registered, then re-export new public names from `src/witty_for_python/__init__.py` (both the `from ._witty_for_python import (...)` block *and* the `__all__` list).
+When you add a new binding source: append it to `WITTY_FOR_PYTHON_SOURCES` in `CMakeLists.txt`, add a `register_xxx` declaration in `ext/common.hpp` *inside the `witty_for_python` namespace*, call it from `NB_MODULE` in `ext/module.cpp` after its base classes are registered, then re-export new public names from `src/witty_for_python/__init__.py` (both the `from ._witty_for_python import (...)` block *and* the `__all__` list).
 
 ---
 
@@ -297,11 +297,11 @@ When you add a new binding source: append it to `PYWITTY_SOURCES` in `CMakeLists
 
 ## §11. Build environment
 
-`CMAKE_PREFIX_PATH=$HOME/.local` because Wt 4.13.x is built from source into the user prefix (see [building_wt.md](building_wt.md)). The extension's RPATH is `$HOME/.local/lib` (set via `CMAKE_INSTALL_RPATH_USE_LINK_PATH`), so `import witty_for_python` works without `LD_LIBRARY_PATH`.
+Wt is vendored at `extern/wt` as a git submodule (pinned to 4.13.2). CMake builds it as part of our build via `add_subdirectory(extern/wt EXCLUDE_FROM_ALL)`; the resulting `libwt.so` and `libwthttp.so` are installed into `<package>/_libs/` and the extension's RPATH is `$ORIGIN/_libs`, so `import witty_for_python` works without `LD_LIBRARY_PATH` and without any system Wt install. See [building_wt.md](building_wt.md).
 
 ```bash
-CMAKE_PREFIX_PATH="$HOME/.local" \
-  /path/to/python -m pip install --no-build-isolation -e .
+git clone --recursive ...    # or `git submodule update --init --recursive`
+/path/to/python -m pip install --no-build-isolation -e .
 ```
 
-Run from the repo root — scikit-build-core's discovery breaks if you run from `ext/`.
+Run from the repo root — scikit-build-core's discovery breaks if you run from `ext/`. First-time build takes ~8 minutes (Wt is large); subsequent rebuilds re-use the CMake build dir.

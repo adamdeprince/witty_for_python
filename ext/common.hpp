@@ -36,12 +36,13 @@ template <> struct type_caster<Wt::WString> {
 };
 }  // namespace nanobind::detail
 
-namespace pywitty {
+namespace witty_for_python {
 
 using namespace nb::literals;
 
 void register_signals(nb::module_& m);
 void register_application(nb::module_& m);
+void register_validators(nb::module_& m);
 void register_container(nb::module_& m);
 void register_widgets(nb::module_& m);
 void register_form(nb::module_& m);
@@ -50,4 +51,4 @@ void register_table(nb::module_& m);
 void register_layout(nb::module_& m);
 void register_server(nb::module_& m);
 
-}  // namespace pywitty
+}  // namespace witty_for_python

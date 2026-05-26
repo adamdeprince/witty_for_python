@@ -37,7 +37,7 @@ The user picked "broader widget set up-front" over a minimal hello-world, so the
 
 ## Architectural conventions
 
-- **Wt acquisition** — `find_package(Wt REQUIRED COMPONENTS Wt HTTP)` against a system install at `~/.local`. **Do not switch to FetchContent**: Wt is large; a vendored build is too slow. Both-with-fallback was offered and rejected.
+- **Wt acquisition** — vendored as a git submodule at `extern/wt`, currently pinned to release 4.13.2. `CMakeLists.txt` uses `add_subdirectory(extern/wt EXCLUDE_FROM_ALL)` after pre-setting Wt's CMake options. The wheel bundles `libwt.so` + `libwthttp.so` (in `_libs/`) and Wt's static resources (in `_wt_resources/`). No system Wt install required. Pinning a specific commit gives us GPL source traceability — every binary we produce links a known Wt source tree. See [building_wt.md](building_wt.md).
 - **Ownership** — Wt 4 is `std::unique_ptr`-based. `add_widget` / `set_layout` take `std::unique_ptr<T>` and *invalidate the Python wrapper on the caller side*; callers must rebind to the returned non-owning handle. Factory callbacks for `add_entry_point` use `std::function<unique_ptr<WApplication>(const WEnvironment&)>` so the returned Python `WApplication` ownership transfers cleanly to Wt.
 - **Strings** — `Wt::WString` is bound transparently to Python `str` via a custom `nb::type_caster` in `ext/common.hpp`. Do not bind `WString` as a distinct Python type; just use it in C++ signatures and the caster handles the conversion.
 - **Signals** — Python callables are wrapped in `std::shared_ptr<nb::object>` held by the connection. Slot fires acquire the GIL (or no-op under free-threading). See [signal_slot.md](signal_slot.md).
@@ -48,15 +48,15 @@ The user picked "broader widget set up-front" over a minimal hello-world, so the
 - [binding_design.md](binding_design.md) — the rules for adding to or changing the bindings. Read before touching `ext/`.
 - [signal_slot.md](signal_slot.md) — signal/slot architecture, arity introspection, connection registry, bound-method detection.
 - [threading.md](threading.md) — threading model, cross-thread APIs, free-threaded Python 3.14t status, Wt's per-signal serialisation constraint.
-- [building_wt.md](building_wt.md) — apt deps and CMake flags to build Wt 4.13.x from source into `~/.local`.
+- [building_wt.md](building_wt.md) — how Wt is vendored at `extern/wt`, the CMake options we set on it, the wheel layout, and how to bump the pin.
 
 ## Build command (TL;DR)
 
 ```bash
-CMAKE_PREFIX_PATH="$HOME/.local" \
-  /path/to/python -m pip install --no-build-isolation -e .
+git clone --recursive ...   # or `git submodule update --init --recursive`
+/path/to/python -m pip install --no-build-isolation -e .
 ```
 
 Run from the repo root — scikit-build-core's discovery breaks if you run from `ext/`.
 
-The compiled `.so` has an RPATH baked in pointing at `~/.local/lib`, so `import witty_for_python` works without `LD_LIBRARY_PATH`.
+The compiled `.so` has an RPATH baked in pointing at `$ORIGIN/_libs` (the bundled Wt libraries), so `import witty_for_python` works without `LD_LIBRARY_PATH` and without any system Wt install.

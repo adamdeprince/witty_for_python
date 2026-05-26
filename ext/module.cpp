@@ -9,26 +9,28 @@ NB_MODULE(_witty_for_python, m) {
     // Order matters: base classes (WObject -> WWidget -> WInteractWidget ->
     // WFormWidget / WContainerWidget) must be registered before their
     // derived classes are referenced.
-    pywitty::register_signals(m);
-    pywitty::register_application(m);
-    pywitty::register_container(m);
-    pywitty::register_widgets(m);
-    pywitty::register_form(m);
-    pywitty::register_navigation(m);
-    pywitty::register_table(m);
-    pywitty::register_layout(m);
-    pywitty::register_server(m);
+    witty_for_python::register_signals(m);
+    // register_application invokes register_validators internally between
+    // WInteractWidget and WFormWidget (which needs the validator types).
+    witty_for_python::register_application(m);
+    witty_for_python::register_container(m);
+    witty_for_python::register_widgets(m);
+    witty_for_python::register_form(m);
+    witty_for_python::register_navigation(m);
+    witty_for_python::register_table(m);
+    witty_for_python::register_layout(m);
+    witty_for_python::register_server(m);
 
     // Module-level helpers used by the Python atexit handler in
-    // pywitty/__init__.py to drop every Python-callable connection before
+    // witty_for_python/__init__.py to drop every Python-callable connection before
     // nanobind's shutdown-time leak detector runs.
     m.def("_cleanup_all_connections",
-          &pywitty::connection_registry_disconnect_all_signals,
-          "Disconnect every Python-callable slot opened through pywitty. "
+          &witty_for_python::connection_registry_disconnect_all_signals,
+          "Disconnect every Python-callable slot opened through witty_for_python. "
           "Idempotent. Called automatically at interpreter exit.");
     m.def("_live_connection_count",
-          &pywitty::connection_registry_size,
-          "Count of Python-callable connections currently held by pywitty.");
+          &witty_for_python::connection_registry_size,
+          "Count of Python-callable connections currently held by witty_for_python.");
 
     // Round-trip helper for tests. Takes anything that converts to WLink and
     // returns the URL string. Used to verify str→WLink implicit conversion

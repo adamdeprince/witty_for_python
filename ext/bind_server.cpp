@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-namespace pywitty {
+namespace witty_for_python {
 
 void register_server(nb::module_& m) {
     nb::enum_<Wt::EntryPointType>(m, "EntryPointType")
@@ -88,4 +88,4 @@ void register_server(nb::module_& m) {
              "session. Thread-safe.");
 }
 
-}  // namespace pywitty
+}  // namespace witty_for_python

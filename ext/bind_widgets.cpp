@@ -8,7 +8,7 @@
 #include <Wt/WPushButton.h>
 #include <Wt/WText.h>
 
-namespace pywitty {
+namespace witty_for_python {
 
 void register_widgets(nb::module_& m) {
     // The URL constructor is marked `init_implicit` so a plain `str` auto-
@@ -89,4 +89,4 @@ void register_widgets(nb::module_& m) {
             [](Wt::WImage& w, const Wt::WString& t) { w.setAlternateText(t); });
 }
 
-}  // namespace pywitty
+}  // namespace witty_for_python

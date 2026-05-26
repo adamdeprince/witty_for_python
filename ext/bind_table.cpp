@@ -5,7 +5,7 @@
 #include <Wt/WTableColumn.h>
 #include <Wt/WTableRow.h>
 
-namespace pywitty {
+namespace witty_for_python {
 
 void register_table(nb::module_& m) {
     nb::class_<Wt::WTableCell, Wt::WContainerWidget>(m, "WTableCell")
@@ -48,4 +48,4 @@ void register_table(nb::module_& m) {
              "column"_a, nb::rv_policy::reference_internal);
 }
 
-}  // namespace pywitty
+}  // namespace witty_for_python

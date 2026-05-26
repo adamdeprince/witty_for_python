@@ -20,7 +20,7 @@
 #include <set>
 #include <string>
 
-namespace pywitty {
+namespace witty_for_python {
 
 void register_form(nb::module_& m) {
     // ---- Enums used by form widgets ----
@@ -247,4 +247,4 @@ void register_form(nb::module_& m) {
                      nb::rv_policy::reference_internal);
 }
 
-}  // namespace pywitty
+}  // namespace witty_for_python

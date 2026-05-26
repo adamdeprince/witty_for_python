@@ -5,7 +5,7 @@
 #include <Wt/WText.h>
 #include <Wt/WWidget.h>
 
-namespace pywitty {
+namespace witty_for_python {
 
 void register_container(nb::module_& m) {
     nb::class_<Wt::WContainerWidget, Wt::WInteractWidget>(m, "WContainerWidget")
@@ -86,4 +86,4 @@ void register_container(nb::module_& m) {
              "layout"_a);
 }
 
-}  // namespace pywitty
+}  // namespace witty_for_python

@@ -38,6 +38,11 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
 
 
 def main(argv: list[str]) -> int:
+    # Default --resources-dir to the bundled path if the user didn't pass one.
+    if not any(a == "--resources-dir" or a.startswith("--resources-dir=")
+               for a in argv[1:]):
+        argv = argv + ["--resources-dir", wt.resources_dir]
+
     server = wt.WServer()
     server.set_server_configuration(argv)
     server.add_entry_point(wt.EntryPointType.Application, create_app)

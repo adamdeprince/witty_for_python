@@ -6,7 +6,7 @@
 
 #include <memory>
 
-namespace pywitty {
+namespace witty_for_python {
 
 // Inspect a Python callable to find out how many positional args it accepts.
 // Returns 0 (no args), N (exact positional count), or -1 (variadic or
@@ -59,4 +59,4 @@ Wt::Signals::connection py_connect(SigT& sig, nb::callable cb) {
     return conn;
 }
 
-}  // namespace pywitty
+}  // namespace witty_for_python

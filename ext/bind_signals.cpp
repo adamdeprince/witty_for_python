@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace pywitty {
+namespace witty_for_python {
 
 namespace {
 
@@ -215,7 +215,7 @@ void register_signals(nb::module_& m) {
     // signal/slot patterns outside the Wt widget tree.
     // Each binding below exposes `disconnect_all_slots()`. It clears every
     // connection opened through py_connect, releasing the Python-callable
-    // holders. The Python-side atexit handler in pywitty/__init__.py invokes
+    // holders. The Python-side atexit handler in witty_for_python/__init__.py invokes
     // this on every live Signal/EventSignal instance before nanobind's
     // shutdown-time leak detector runs. See README "Shutdown warnings".
 
@@ -301,4 +301,4 @@ void register_signals(nb::module_& m) {
             });
 }
 
-}  // namespace pywitty
+}  // namespace witty_for_python

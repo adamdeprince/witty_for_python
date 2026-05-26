@@ -1,5 +1,7 @@
 # witty_for_python
 
+[![CI](https://github.com/adamdeprince/witty_for_python/actions/workflows/ci.yml/badge.svg)](https://github.com/adamdeprince/witty_for_python/actions/workflows/ci.yml)
+
 Python bindings for [Wt (Web Toolkit)](https://www.webtoolkit.eu/wt) — a C++ widget-tree web framework — generated with [nanobind](https://github.com/wjakob/nanobind) and built against C++23.
 
 > **Independent, unofficial wrapper.** witty_for_python is a personal project by [Adam DePrince](https://adamdeprince.com). It is **not** produced by, endorsed by, sponsored by, or otherwise affiliated with Emweb bv, the authors and copyright holders of Wt. "Wt" is referenced here only in its descriptive sense — to identify the library this software wraps — and remains the property of Emweb. For Wt itself (source, official binaries, support, commercial licensing), go directly to [www.webtoolkit.eu/wt](https://www.webtoolkit.eu/wt).
@@ -15,34 +17,38 @@ Pre-alpha scaffold. Initial bindings cover:
 
 ## Requirements
 
-- C++23 toolchain (gcc ≥ 13, clang ≥ 17, MSVC ≥ 19.36)
+- C++23 toolchain (gcc ≥ 13, clang ≥ 17)
 - CMake ≥ 3.26
-- Python ≥ 3.10
-- Wt ≥ 4.10 (system install)
-  - Debian / Ubuntu: `sudo apt install libwt-dev libwthttp-dev`
-  - macOS (Homebrew): `brew install wt`
-  - From source: <https://github.com/emweb/wt>
+- Python ≥ 3.10 (or a free-threaded 3.13t / 3.14t — auto-detected)
+- Boost dev headers + zlib dev (Wt's build-time deps)
+  - Debian / Ubuntu: `sudo apt install libboost-dev libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-program-options-dev zlib1g-dev`
+
+Wt itself is **vendored** as a git submodule at `extern/wt` (currently pinned to 4.13.2) and built as part of `pip install`. You do **not** install Wt separately.
 
 ## Build & install
 
 ```bash
-pip install .
+git clone --recursive git@github.com:adamdeprince/witty_for_python.git
+cd witty_for_python
+pip install --no-build-isolation -e ".[test]"   # editable + pytest
 ```
 
-scikit-build-core drives CMake under the hood. For an editable install:
+For a non-editable install: `pip install --no-build-isolation .`.
 
-```bash
-pip install --no-build-isolation -ve . \
-    --config-settings=build-dir=build/{wheel_tag}
-```
+scikit-build-core drives CMake; CMake builds Wt from the submodule, links our extension against it, and bundles `libwt.so` + `libwthttp.so` and Wt's static resources into the package directory. The extension's RPATH is `$ORIGIN/_libs`, so `import witty_for_python` works without any `LD_LIBRARY_PATH` or `~/.local` setup.
+
+First build takes ~8 minutes (Wt is large). Subsequent rebuilds re-use the CMake build dir and finish in under a minute.
+
+See [docs/building_wt.md](docs/building_wt.md) for details on the vendored-Wt layout, the CMake options we set on it, and how to bump the pin.
 
 ## Run the example
 
 ```bash
-python examples/hello.py --docroot . --http-address 0.0.0.0 --http-port 8080
+python examples/gallery.py --docroot . \
+    --http-address 127.0.0.1 --http-port 8080
 ```
 
-Then open <http://localhost:8080>.
+Then open <http://localhost:8080>. The static resources Wt serves to the browser are bundled with the package; the example finds them via `witty_for_python.resources_dir`.
 
 ## Project layout
 

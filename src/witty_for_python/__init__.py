@@ -4,10 +4,45 @@ from __future__ import annotations
 
 import atexit as _atexit
 import contextlib as _contextlib
+from pathlib import Path as _Path
 from typing import Iterator as _Iterator
+
+# Import the C++ extension first so `_ext.__file__` resolves to the actual
+# installed `.so` — which is where the bundled `_libs/` and `_wt_resources/`
+# siblings also live. Using `__file__` of this module instead would resolve
+# to the source-tree `__init__.py` under editable installs, where those
+# bundled directories don't exist.
+from . import _witty_for_python as _ext
+
+
+# Wt's static assets (themes, JS, CSS, icons) shipped alongside the extension.
+# The wheel install layout puts them at <package>/_wt_resources/. Wt's wthttpd
+# needs to be told where to find them via its `--resources-dir` CLI flag.
+resources_dir: str = str(_Path(_ext.__file__).resolve().parent / "_wt_resources")
+"""Filesystem path to Wt's static resources bundled with this wheel.
+
+Pass this to wthttpd via `--resources-dir`:
+
+    server.set_server_configuration([
+        "...", "--resources-dir", wt.resources_dir, ...,
+    ])
+
+The path resolves to a directory inside the installed package; nothing
+to install or download at runtime.
+"""
 
 from ._witty_for_python import (
     UpdateLock,
+    ValidationResult,
+    ValidationResultSignal,
+    ValidationState,
+    WDoubleValidator,
+    WEmailValidator,
+    WIntValidator,
+    WLengthValidator,
+    WRegExpValidator,
+    WStackedValidator,
+    WValidator,
     _cleanup_all_connections,
     _live_connection_count,
     BoolSignal,
@@ -93,7 +128,7 @@ __version__ = "0.1.0"
 
 
 def _cleanup_signal_slots() -> None:
-    """Disconnect every Python-callable slot pywitty is holding.
+    """Disconnect every Python-callable slot witty_for_python is holding.
 
     Called from an ``atexit`` handler registered below. Safe to invoke
     explicitly (e.g. between tests) — it is idempotent.
@@ -153,6 +188,9 @@ __all__ = [
     "StandardButtonSignal",
     "StringSignal",
     "UpdateLock",
+    "ValidationResult",
+    "ValidationResultSignal",
+    "ValidationState",
     "WAnchor",
     "WApplication",
     "WBoxLayout",
@@ -160,6 +198,13 @@ __all__ = [
     "WButtonGroup",
     "WCheckBox",
     "WComboBox",
+    "WDoubleValidator",
+    "WEmailValidator",
+    "WIntValidator",
+    "WLengthValidator",
+    "WRegExpValidator",
+    "WStackedValidator",
+    "WValidator",
     "WContainerWidget",
     "WDialog",
     "WDoubleSpinBox",
@@ -199,5 +244,6 @@ __all__ = [
     "WVBoxLayout",
     "WWidget",
     "__version__",
+    "resources_dir",
     "update_lock",
 ]

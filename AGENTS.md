@@ -20,7 +20,7 @@ See [docs/overview.md](docs/overview.md) for the full picture.
 | **The rules for adding to or changing the bindings** — read this first | [docs/binding_design.md](docs/binding_design.md) |
 | Signal/slot architecture; arity introspection; connection registry; shutdown leak handling | [docs/signal_slot.md](docs/signal_slot.md) |
 | Threading model; cross-thread APIs; Wt's per-signal serialisation constraint; free-threaded Python 3.14t status | [docs/threading.md](docs/threading.md) |
-| Building Wt 4.13 from source into `~/.local` | [docs/building_wt.md](docs/building_wt.md) |
+| How Wt is vendored at `extern/wt` and built as part of `pip install` | [docs/building_wt.md](docs/building_wt.md) |
 
 ## The single load-bearing rule
 
@@ -32,14 +32,14 @@ Things this rule already vetoed: auto-setting `WSelectionBox.vertical_size` on `
 
 ## Build / run
 
-Wt must be installed first — see [docs/building_wt.md](docs/building_wt.md). Once that's done:
+Wt is vendored as a git submodule at `extern/wt` and built as part of `pip install`. No separate Wt install needed.
 
 ```bash
-CMAKE_PREFIX_PATH="$HOME/.local" \
-  /path/to/python -m pip install --no-build-isolation -e .
+git clone --recursive ...      # or: git submodule update --init --recursive
+/path/to/python -m pip install --no-build-isolation -e .
 ```
 
-Run from the repo root. The build auto-detects free-threaded Python (`t`-ABI) and switches nanobind accordingly.
+System build deps (Boost dev headers, zlib dev) and toolchain expectations are in [docs/building_wt.md](docs/building_wt.md). Run pip from the repo root. The build auto-detects free-threaded Python (`t`-ABI) and switches nanobind to its free-threaded mode accordingly.
 
 ## Demo
 

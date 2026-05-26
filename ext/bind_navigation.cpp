@@ -17,7 +17,7 @@
 #include <memory>
 #include <string>
 
-namespace pywitty {
+namespace witty_for_python {
 
 void register_navigation(nb::module_& m) {
     // ---- Enums ----
@@ -264,4 +264,4 @@ void register_navigation(nb::module_& m) {
                      nb::rv_policy::reference_internal);
 }
 
-}  // namespace pywitty
+}  // namespace witty_for_python
