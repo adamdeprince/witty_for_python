@@ -33,6 +33,8 @@ to install or download at runtime.
 
 from ._witty_for_python import (
     DateSignal,
+    TemplateWidgetIdMode,
+    TextFormat,
     UpdateLock,
     ValidationResult,
     ValidationResultSignal,
@@ -46,6 +48,7 @@ from ._witty_for_python import (
     WLengthValidator,
     WRegExpValidator,
     WStackedValidator,
+    WTemplate,
     WTimeEdit,
     WTimeValidator,
     WValidator,
@@ -194,6 +197,8 @@ __all__ = [
     "StandardButton",
     "StandardButtonSignal",
     "StringSignal",
+    "TemplateWidgetIdMode",
+    "TextFormat",
     "UpdateLock",
     "ValidationResult",
     "ValidationResultSignal",
@@ -249,6 +254,7 @@ __all__ = [
     "WTableColumn",
     "WTableRow",
     "WTabWidget",
+    "WTemplate",
     "WText",
     "WTextArea",
     "WTimeEdit",

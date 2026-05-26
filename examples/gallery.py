@@ -334,6 +334,46 @@ def make_events_tab() -> wt.WContainerWidget:
     return c
 
 
+# ---- Templates: XML layout with bound variables/widgets ----
+
+def make_template_tab() -> wt.WContainerWidget:
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>WTemplate</h3>")
+    c.add_widget(
+        "<p>The card below is a single <code>WTemplate</code> with the layout "
+        "in an HTML string. <code>${name}</code> is a bound string, "
+        "<code>${count}</code> a bound int (re-bound on each click), and "
+        "<code>${button}</code> is a bound <code>WPushButton</code> — the "
+        "same Python widget you'd add to any container, just slotted into the "
+        "template's named placeholder.</p>")
+
+    card = c.add_widget(wt.WTemplate("""
+        <div style="padding:1em;border:1px solid #888;border-radius:6px;
+                    background:#f4f6f8; max-width:32em;">
+          <h4 style="margin-top:0;">Hello, ${name}!</h4>
+          <p>You have clicked the button <b>${count}</b> time(s).</p>
+          <p>${button}</p>
+          ${<if-celebrate>}
+            <p style="color:#0a7;"><b>10+ clicks. Nice.</b></p>
+          ${</if-celebrate>}
+        </div>
+    """))
+
+    card.bind_string("name", "world")
+    state = {"n": 0}
+    card.bind_int("count", 0)
+
+    btn = card.bind_widget("button", wt.WPushButton("Click me"))
+
+    def on_click() -> None:
+        state["n"] += 1
+        card.bind_int("count", state["n"])
+        card.set_condition("celebrate", state["n"] >= 10)
+
+    btn.clicked.connect(on_click)
+    return c
+
+
 # ---- Application factory + server bootstrap ----
 
 def create_app(env: wt.WEnvironment) -> wt.WApplication:
@@ -355,6 +395,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_table_tab(), "Table")
     tabs.add_tab(make_dialog_tab(), "Dialogs")
     tabs.add_tab(make_events_tab(), "Events")
+    tabs.add_tab(make_template_tab(), "Template")
     return app
 
 

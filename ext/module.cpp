@@ -19,6 +19,7 @@ NB_MODULE(_witty_for_python, m) {
     // Date/time widgets (WDateEdit, WTimeEdit) extend WLineEdit, so they
     // need bind_widgets registered first.
     witty_for_python::register_datetime(m);
+    witty_for_python::register_template(m);
     witty_for_python::register_navigation(m);
     witty_for_python::register_table(m);
     witty_for_python::register_layout(m);
