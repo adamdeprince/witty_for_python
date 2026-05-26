@@ -151,3 +151,67 @@ install(TARGETS wt wthttp
         LIBRARY DESTINATION witty_for_python/_libs)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/extern/wt/resources/"
         DESTINATION witty_for_python/_wt_resources)
+
+# -- TinyMCE (vendored at extern/tinymce as a git submodule, pinned to
+#    release tinymce@6.8.4) --
+#
+# Same forensic story as Wt: the gitlink in our history points at the exact
+# TinyMCE source revision. License at that tag is MIT (Tiny later switched
+# main to GPLv2+; we are pinned to the MIT-era tag).
+#
+# TinyMCE has no checked-in build artefacts, so we drive `yarn install` +
+# `yarn build` here at configure/build time. The build is slow (~3-5 min,
+# downloads + transpiles a large TS/JS tree); we cache its output via a
+# stamp file so subsequent CMake builds skip it when nothing changed.
+#
+# WTextEdit doesn't work without these assets, so we make the build an
+# error if yarn isn't on PATH. Set WITTY_FOR_PYTHON_BUILD_TINYMCE=OFF to
+# skip (e.g. during a partial dev cycle where you don't need rich text).
+
+option(WITTY_FOR_PYTHON_BUILD_TINYMCE
+       "Build TinyMCE from the vendored submodule and bundle it into the wheel"
+       ON)
+
+if(WITTY_FOR_PYTHON_BUILD_TINYMCE)
+  if(NOT EXISTS "${CMAKE_SOURCE_DIR}/extern/tinymce/package.json")
+    message(FATAL_ERROR
+      "TinyMCE source not found at extern/tinymce. Run "
+      "`git submodule update --init --recursive` to fetch it, or pass "
+      "-DWITTY_FOR_PYTHON_BUILD_TINYMCE=OFF to skip (WTextEdit won't work).")
+  endif()
+
+  find_program(YARN_EXECUTABLE yarn
+    DOC "Path to yarn (TinyMCE build tool)")
+  if(NOT YARN_EXECUTABLE)
+    message(FATAL_ERROR
+      "yarn not found on PATH. Required to build TinyMCE. Install it via "
+      "`corepack enable yarn` (Node 16+) or `npm install -g yarn`, or pass "
+      "-DWITTY_FOR_PYTHON_BUILD_TINYMCE=OFF.")
+  endif()
+
+  set(TINYMCE_SRC_DIR   "${CMAKE_SOURCE_DIR}/extern/tinymce")
+  set(TINYMCE_DIST_DIR  "${TINYMCE_SRC_DIR}/modules/tinymce/js/tinymce")
+  # The minified core JS is the canonical "yes, build ran" marker.
+  set(TINYMCE_DIST_FILE "${TINYMCE_DIST_DIR}/tinymce.min.js")
+
+  add_custom_command(
+    OUTPUT  "${TINYMCE_DIST_FILE}"
+    COMMAND "${YARN_EXECUTABLE}" install --frozen-lockfile --ignore-scripts
+    COMMAND "${YARN_EXECUTABLE}" install --frozen-lockfile
+    COMMAND "${YARN_EXECUTABLE}" build
+    WORKING_DIRECTORY "${TINYMCE_SRC_DIR}"
+    # We don't track every source file (there are thousands); package.json
+    # + yarn.lock are the load-bearing inputs for a clean rebuild. Touching
+    # those re-fires the build; editing TinyMCE source in-place won't,
+    # which is fine because we never expect to modify the submodule.
+    DEPENDS "${TINYMCE_SRC_DIR}/package.json"
+            "${TINYMCE_SRC_DIR}/yarn.lock"
+    COMMENT "Building TinyMCE via yarn (this takes a few minutes)"
+    VERBATIM)
+
+  add_custom_target(witty_for_python_tinymce_build ALL
+                    DEPENDS "${TINYMCE_DIST_FILE}")
+
+  install(DIRECTORY "${TINYMCE_DIST_DIR}/"
+          DESTINATION witty_for_python/_wt_resources/tinymce)
+endif()

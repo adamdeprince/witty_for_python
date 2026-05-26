@@ -581,6 +581,24 @@ def make_extras_tab() -> wt.WContainerWidget:
                   "pear", "raspberry", "strawberry"):
         popup.add_suggestion(fruit)
     popup.for_edit(target)
+    suggest_log = c.add_widget(wt.WText(""))
+
+    def on_suggestion_picked(row: int, edit) -> None:
+        # `edit` is whichever WFormWidget the popup was for_edit'd against
+        # (we have only one here, but a single popup can serve many edits).
+        del edit
+        suggest_log.text = f"picked row <b>{row}</b>"
+    popup.activated.connect(on_suggestion_picked)
+
+    # ---- WTextEdit (rich text — backed by the bundled TinyMCE) ----
+    c.add_widget("<h4>WTextEdit (rich text)</h4>")
+    c.add_widget(
+        "<p>The editor below is a <code>WTextEdit</code>, which wraps "
+        "TinyMCE. The JS + skins ship inside the wheel under "
+        "<code>witty_for_python._wt_resources/tinymce/</code>.</p>")
+    rich = c.add_widget(wt.WTextEdit("<p>Try editing this <b>rich</b> text.</p>"))
+    rich.set_extra_plugins("lists,advlist,link")
+    rich.set_tool_bar(0, "bold italic underline | bullist numlist | link unlink")
 
     return c
 

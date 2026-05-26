@@ -22,8 +22,17 @@ Pre-alpha scaffold. Initial bindings cover:
 - Python ≥ 3.10 (or a free-threaded 3.13t / 3.14t — auto-detected)
 - Boost dev headers + zlib dev (Wt's build-time deps)
   - Debian / Ubuntu: `sudo apt install libboost-dev libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-program-options-dev zlib1g-dev`
+- Node ≥ 16 + Yarn 1.x (to build the vendored TinyMCE; only needed when `WITTY_FOR_PYTHON_BUILD_TINYMCE=ON`, the default)
+  - On Ubuntu with Corepack: `sudo corepack enable yarn`
 
-Wt itself is **vendored** as a git submodule at `extern/wt` (currently pinned to 4.13.2) and built as part of `pip install`. You do **not** install Wt separately.
+Two third-party libraries are **vendored** as git submodules and built as part of `pip install` — you do not install either of them separately:
+
+| Submodule         | Version          | License | Bundled as                                              |
+| ----------------- | ---------------- | ------- | ------------------------------------------------------- |
+| `extern/wt`       | Wt 4.13.2        | GPLv2   | `_libs/libwt.so`, `libwthttp.so`, `_wt_resources/*`     |
+| `extern/tinymce`  | TinyMCE 6.8.4    | MIT     | `_wt_resources/tinymce/` (powers `WTextEdit`)           |
+
+See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for attribution details and the upstream license texts that ride along inside each wheel.
 
 ## Build & install
 
@@ -35,9 +44,9 @@ pip install --no-build-isolation -e ".[test]"   # editable + pytest
 
 For a non-editable install: `pip install --no-build-isolation .`.
 
-scikit-build-core drives CMake; CMake builds Wt from the submodule, links our extension against it, and bundles `libwt.so` + `libwthttp.so` and Wt's static resources into the package directory. The extension's RPATH is `$ORIGIN/_libs`, so `import witty_for_python` works without any `LD_LIBRARY_PATH` or `~/.local` setup.
+scikit-build-core drives CMake; CMake builds Wt from the `extern/wt` submodule, builds TinyMCE from the `extern/tinymce` submodule (via `yarn build`), links our extension against Wt, and bundles `libwt.so` + `libwthttp.so` + Wt's static resources + the TinyMCE distribution into the package directory. The extension's RPATH is `$ORIGIN/_libs`, so `import witty_for_python` works without any `LD_LIBRARY_PATH` or `~/.local` setup.
 
-First build takes ~8 minutes (Wt is large). Subsequent rebuilds re-use the CMake build dir and finish in under a minute.
+First build takes ~13 minutes cold (Wt ≈ 8 min, TinyMCE ≈ 5 min). Both are cached across rebuilds — incremental edits to our own sources finish in under a minute. Pass `-DWITTY_FOR_PYTHON_BUILD_TINYMCE=OFF` to skip the TinyMCE step (the wheel still builds; `WTextEdit` won't have a working asset path).
 
 See [docs/building_wt.md](docs/building_wt.md) for details on the vendored-Wt layout, the CMake options we set on it, and how to bump the pin.
 
@@ -124,5 +133,12 @@ You may also call `witty_for_python._cleanup_signal_slots()` directly between te
 witty_for_python is licensed under the **GNU General Public License, Version 2 only** — the same restriction Wt itself imposes ("Other versions of the GPL do not apply"). The full text is in [LICENSE](LICENSE).
 
 A Wt commercial license obtained from Emweb does **not** grant any commercial license to witty_for_python. The two are independent works with independent copyright holders; a license to one is not a license to the other. witty_for_python is currently available **only** under GPLv2.
+
+### Bundled third-party software
+
+Built wheels redistribute two upstream open-source projects, each vendored as a git submodule so the exact source for any binary we ship can be traced to a specific upstream commit. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for the attribution detail.
+
+- **Wt 4.13.2** — GPL-2.0-only ("Wt OSS license"). Compatible with witty_for_python's GPLv2. Source at `extern/wt`; license text at `extern/wt/COPYING.GPL2`.
+- **TinyMCE 6.8.4** — MIT license. Compatible with GPLv2. Source at `extern/tinymce`; license text at `extern/tinymce/LICENSE.TXT` and at `_wt_resources/tinymce/license.txt` inside the installed wheel.
 
 Copyright (C) 2026 Adam DePrince. All rights reserved.

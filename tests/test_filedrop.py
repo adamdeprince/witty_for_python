@@ -28,6 +28,20 @@ def test_signal_type_is_exposed(name: str) -> None:
     assert isinstance(getattr(wt, name), type)
 
 
+def test_wfiledropwidget_has_nested_Directory() -> None:
+    """Directory is a File subclass for folder drops — isinstance check
+    against `WFileDropWidget.Directory` works on entries from `drop` when
+    the user dropped a folder."""
+    assert hasattr(wt.WFileDropWidget, "Directory")
+    assert issubclass(wt.WFileDropWidget.Directory,
+                      wt.WFileDropWidget.File)
+
+
+def test_directory_contents_attr() -> None:
+    """The folder-only `contents` accessor exposes child File entries."""
+    assert hasattr(wt.WFileDropWidget.Directory, "contents")
+
+
 @pytest.mark.parametrize("name", [
     "FileSignal", "FileListSignal", "FileSizeSignal",
     "JInt64Signal", "Uint64PairSignal",

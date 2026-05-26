@@ -147,6 +147,7 @@ def test_widget_inheritance(cls: type, base: type) -> None:
     (wt.WSuggestionPopup, "clear_suggestions"),
     (wt.WSuggestionPopup, "filter_length"),
     (wt.WSuggestionPopup, "default_index"),
+    (wt.WSuggestionPopup, "activated"),
     (wt.WTextEdit, "version"),
     (wt.WTextEdit, "style_sheet"),
     (wt.WTextEdit, "set_extra_plugins"),
@@ -155,3 +156,14 @@ def test_widget_inheritance(cls: type, base: type) -> None:
 ])
 def test_widget_attribute_present(cls: type, attr: str) -> None:
     assert hasattr(cls, attr), f"{cls.__name__} missing: {attr}"
+
+
+def test_int_form_widget_signal_is_exposed_via_module() -> None:
+    """The Signal<int, WFormWidget*> type used by WSuggestionPopup.activated
+    is bound at module scope as IntFormWidgetSignal. Reachable via the C++
+    extension; we expose it for type checks and explicit references."""
+    import witty_for_python._witty_for_python as ext
+    assert hasattr(ext, "IntFormWidgetSignal")
+    cls = ext.IntFormWidgetSignal
+    assert hasattr(cls, "connect")
+    assert hasattr(cls, "disconnect_all_slots")

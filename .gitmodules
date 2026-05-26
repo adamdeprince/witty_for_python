@@ -1,3 +1,7 @@
 [submodule "extern/wt"]
 	path = extern/wt
 	url = https://github.com/emweb/wt.git
+[submodule "extern/tinymce"]
+	path = extern/tinymce
+	url = https://github.com/tinymce/tinymce.git
+	branch = main

@@ -1,9 +1,12 @@
 #include "common.hpp"
+#include "signal_helpers.hpp"
 
 #include <Wt/WColor.h>
 #include <Wt/WColorPicker.h>
+#include <Wt/WFormWidget.h>
 #include <Wt/WInPlaceEdit.h>
 #include <Wt/WPasswordEdit.h>
+#include <Wt/WSignal.h>
 #include <Wt/WSuggestionPopup.h>
 #include <Wt/WTextEdit.h>
 
@@ -177,6 +180,25 @@ void register_extra_form(nb::module_& m) {
         .def_rw("word_start_regexp",
                 &Wt::WSuggestionPopup::Options::wordStartRegexp);
 
+    // ---- Signal<int, WFormWidget*> for WSuggestionPopup.activated ----
+    //
+    // Fires when the user picks a suggestion. The int is the row index in
+    // the popup's model; the WFormWidget* is the edit being assisted (so
+    // one popup wired to several edits can disambiguate the source).
+    // Bound here (not in bind_signals.cpp) because the WFormWidget* payload
+    // makes it WSuggestionPopup-specific in practice.
+
+    nb::class_<Wt::Signal<int, Wt::WFormWidget*>>(m, "IntFormWidgetSignal")
+        .def("connect",
+            [](Wt::Signal<int, Wt::WFormWidget*>& s, nb::callable cb) {
+                return py_connect<Wt::Signal<int, Wt::WFormWidget*>,
+                                  int, Wt::WFormWidget*>(s, std::move(cb));
+            }, "callable"_a)
+        .def("disconnect_all_slots",
+            [](Wt::Signal<int, Wt::WFormWidget*>& s) {
+                connection_registry_disconnect_all(&s);
+            });
+
     // ---- WSuggestionPopup: autocomplete popup attached to one or more
     //      WFormWidgets ----
 
@@ -226,7 +248,13 @@ void register_extra_form(nb::module_& m) {
              "When True, clicking the drop-down icon shows all suggestions "
              "regardless of current input. Pairs with PopupTrigger.DropDownIcon.")
         .def("set_auto_select_enabled",
-             &Wt::WSuggestionPopup::setAutoSelectEnabled, "enabled"_a);
+             &Wt::WSuggestionPopup::setAutoSelectEnabled, "enabled"_a)
+        .def_prop_ro("activated", &Wt::WSuggestionPopup::activated,
+                     nb::rv_policy::reference_internal,
+                     "IntFormWidgetSignal — fires when the user picks a "
+                     "suggestion. Slot receives (row_index, edit_widget); "
+                     "edit_widget is whichever WFormWidget the popup was "
+                     "for_edit'd against.");
         // .model accessor is intentionally NOT bound — its return type is
         // shared_ptr<WAbstractItemModel> and the model/view subsystem is a
         // separate (P2) chunk of work. Use add_suggestion() / clear_suggestions()

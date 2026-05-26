@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout (with extern/wt submodule)
+      - name: Checkout (with extern/wt + extern/tinymce submodules)
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -22,6 +22,21 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
+
+      # Node + Yarn are required to build the vendored TinyMCE submodule.
+      # We pin Node 20 (LTS) and use Corepack to provide Yarn at the version
+      # TinyMCE's yarn.lock expects.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          # The yarn cache key uses the TinyMCE submodule's yarn.lock — when
+          # the submodule SHA changes the lock typically changes too, so this
+          # naturally invalidates with version bumps.
+          cache: yarn
+          cache-dependency-path: extern/tinymce/yarn.lock
+
+      - name: Enable Yarn via Corepack
+        run: corepack enable yarn
 
       - name: Install Boost + zlib + ninja (Wt's build-time system deps)
         run: |
@@ -44,6 +59,16 @@ jobs:
         with:
           key: ${{ runner.os }}-ccache-wt-${{ hashFiles('.gitmodules', 'extern/wt/.git/HEAD') }}
           max-size: 500M
+
+      # TinyMCE's `yarn build` is the long pole (~5 min cold). Cache the
+      # built output directory keyed on the submodule SHA so PRs that don't
+      # touch TinyMCE skip the build entirely.
+      - name: Cache TinyMCE build output
+        id: tinymce-cache
+        uses: actions/cache@v4
+        with:
+          path: extern/tinymce/modules/tinymce/js/tinymce
+          key: tinymce-dist-${{ hashFiles('extern/tinymce/.git/HEAD', 'extern/tinymce/yarn.lock') }}
 
       - name: Install Python build helpers
         run: |

@@ -10,6 +10,7 @@ namespace witty_for_python {
 
 void register_filedrop(nb::module_& m) {
     using File = Wt::WFileDropWidget::File;
+    using Directory = Wt::WFileDropWidget::Directory;
 
     // ---- FilePickerType enum ----
 
@@ -71,6 +72,28 @@ void register_filedrop(nb::module_& m) {
             "file before upload. Defaults to True when a filter is set.")
         .def_prop_ro("is_filtered", &File::isFiltered,
             "True iff the JS filter already ran on this file's bytes.");
+
+    // ---- WFileDropWidget::Directory (File subclass) ----
+    //
+    // Bound minimally so isinstance(f, wt.WFileDropWidget.Directory) works
+    // when the drop signal hands you a folder rather than a flat file. The
+    // `contents()` accessor walks the folder's File entries (also non-owning
+    // — pointers belong to the widget).
+
+    auto dir_cls = nb::class_<Directory, File>(m, "WFileDropWidgetDirectory")
+        .def_prop_ro("contents",
+            [](const Directory& d) {
+                // Copy out the const-ref vector so Python gets a list it
+                // can iterate freely.
+                return std::vector<File*>(d.contents().begin(),
+                                          d.contents().end());
+            },
+            "List[File] — children of this folder. For recursive drops "
+            "these may themselves include further Directory entries.")
+        .def_prop_ro("directory",
+            [](const Directory&) { return true; },
+            "Always True for Directory — shadows File.directory() for "
+            "ergonomic type discrimination.");
 
     // ---- Signal types whose payload is File* or vector<File*> ----
     //
@@ -206,6 +229,7 @@ void register_filedrop(nb::module_& m) {
     // Re-attach the File class as WFileDropWidget.File for the natural
     // nested form, mirroring how WSuggestionPopup.Options is exposed.
     drop_cls.attr("File") = file_cls;
+    drop_cls.attr("Directory") = dir_cls;
 }
 
 }  // namespace witty_for_python
