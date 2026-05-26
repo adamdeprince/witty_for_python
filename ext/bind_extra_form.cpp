@@ -1,6 +1,7 @@
 #include "common.hpp"
 #include "signal_helpers.hpp"
 
+#include <Wt/WAbstractItemModel.h>  // for WSuggestionPopup.set_model / .model
 #include <Wt/WColor.h>
 #include <Wt/WColorPicker.h>
 #include <Wt/WFormWidget.h>
@@ -254,11 +255,13 @@ void register_extra_form(nb::module_& m) {
                      "IntFormWidgetSignal — fires when the user picks a "
                      "suggestion. Slot receives (row_index, edit_widget); "
                      "edit_widget is whichever WFormWidget the popup was "
-                     "for_edit'd against.");
-        // .model accessor is intentionally NOT bound — its return type is
-        // shared_ptr<WAbstractItemModel> and the model/view subsystem is a
-        // separate (P2) chunk of work. Use add_suggestion() / clear_suggestions()
-        // for the typical autocomplete-from-strings flow.
+                     "for_edit'd against.")
+        // model setter/getter — depends on WAbstractItemModel being bound
+        // already (register_modelview runs before register_extra_form in
+        // module.cpp). Swap the default WStringListModel for a custom one
+        // when you need sorting/filtering on the suggestion list.
+        .def("set_model", &Wt::WSuggestionPopup::setModel, "model"_a)
+        .def_prop_ro("model", &Wt::WSuggestionPopup::model);
 
     // Re-attach the Options nested class as WSuggestionPopup.Options for
     // ergonomics: `wt.WSuggestionPopup.Options()` (rather than the bare

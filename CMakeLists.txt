@@ -110,7 +110,8 @@ set(WITTY_FOR_PYTHON_SOURCES
   ext/bind_upload.cpp
   ext/bind_extra_form.cpp
   ext/bind_filedrop.cpp
-  ext/bind_chrome.cpp)
+  ext/bind_chrome.cpp
+  ext/bind_modelview.cpp)
 
 # Free-threaded Python (3.13+ with --disable-gil; standard in 3.14+) has no
 # GIL — multiple Python threads can execute concurrently. Wt fires slots from

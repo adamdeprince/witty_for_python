@@ -61,6 +61,7 @@ void register_upload(nb::module_& m);
 void register_extra_form(nb::module_& m);
 void register_filedrop(nb::module_& m);
 void register_chrome(nb::module_& m);
+void register_modelview(nb::module_& m);
 void register_table(nb::module_& m);
 void register_layout(nb::module_& m);
 void register_server(nb::module_& m);

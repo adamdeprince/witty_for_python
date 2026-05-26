@@ -641,6 +641,66 @@ def make_timer_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_modelview_tab() -> wt.WContainerWidget:
+    """Model/view: a WStandardItemModel rendered through a WTableView.
+
+    The model holds a few rows of mock contact data; the view renders
+    them with sortable columns. Clicking a cell logs the (row, column)
+    via the view's ``clicked`` signal — a ``ModelIndexMouseSignal``
+    delivering a ``WModelIndex`` + ``WMouseEvent`` pair into Python.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>Model/view: WTableView over WStandardItemModel</h3>")
+    c.add_widget(
+        "<p>Click any cell to see the model index land in a Python slot. "
+        "Click a column header to sort.</p>")
+
+    model = wt.WStandardItemModel(0, 3)
+    model.set_header_data(0, "Name")
+    model.set_header_data(1, "Role")
+    model.set_header_data(2, "City")
+
+    rows = [
+        ("Alice",   "Engineer",  "Brooklyn"),
+        ("Bob",     "Designer",  "Portland"),
+        ("Carol",   "PM",        "Berlin"),
+        ("Dan",     "Engineer",  "Tokyo"),
+        ("Eve",     "Researcher", "Cambridge"),
+        ("Frank",   "Engineer",  "Brooklyn"),
+    ]
+    for name, role, city in rows:
+        model.append_row([
+            wt.WStandardItem(name),
+            wt.WStandardItem(role),
+            wt.WStandardItem(city),
+        ])
+
+    table = c.add_widget(wt.WTableView())
+    table.model = model
+    # WLength binding hasn't landed yet — column widths default to Wt's
+    # ~150px each, which fits the gallery layout.
+    table.sorting_enabled = True
+    table.column_resize_enabled = True
+    table.selection_mode = wt.SelectionMode.Single
+    table.selection_behavior = wt.SelectionBehavior.SelectRows
+
+    log = c.add_widget(wt.WText("<i>(click a cell)</i>"))
+
+    def on_click(index: wt.WModelIndex, _event: wt.WMouseEvent) -> None:
+        if not index.is_valid:
+            log.text = "<i>(invalid index)</i>"
+            return
+        # Fetch the item via the model's item() accessor — the value at the
+        # Display role is what was shown in the cell.
+        value = model.display_data(index)
+        log.text = (
+            f"clicked row=<b>{index.row}</b>, col=<b>{index.column}</b>: "
+            f"<code>{value}</code>")
+    table.clicked.connect(on_click)
+
+    return c
+
+
 def make_chrome_tab() -> wt.WContainerWidget:
     """Navigation chrome: WNavigationBar, WToolBar, WPopupMenu, WSplitButton,
     WBadge.
@@ -736,6 +796,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_filedrop_tab(), "Drop zone")
     tabs.add_tab(make_extras_tab(), "Extras")
     tabs.add_tab(make_chrome_tab(), "Chrome")
+    tabs.add_tab(make_modelview_tab(), "Data")
     tabs.add_tab(make_timer_tab(), "Timer")
 
     # Apply Bootstrap5 theme so the gallery looks modern. The theme is owned

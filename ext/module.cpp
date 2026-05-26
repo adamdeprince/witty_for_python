@@ -36,6 +36,10 @@ NB_MODULE(_witty_for_python, m) {
     witty_for_python::register_timer(m);
     // WFileUpload — depends on WWidget (so register_application).
     witty_for_python::register_upload(m);
+    // Model/view subsystem. Runs BEFORE register_extra_form because
+    // WSuggestionPopup.set_model takes a shared_ptr<WAbstractItemModel>,
+    // and that base class is bound here.
+    witty_for_python::register_modelview(m);
     // Extra form widgets — most extend WLineEdit / WTextArea /
     // WFormWidget, so they need register_form already run.
     witty_for_python::register_extra_form(m);
