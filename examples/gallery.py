@@ -415,6 +415,159 @@ def make_resources_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_upload_tab() -> wt.WContainerWidget:
+    """File uploads from the browser via WFileUpload.
+
+    The widget exposes a file-picker button. We connect to `changed` (fires
+    when the user picks a file) to kick off the upload immediately, then to
+    `uploaded` (fires when the bytes arrive server-side) to read the spool
+    file and surface basic metadata. The `multiple` knob switches between
+    single- and many-file modes.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>WFileUpload</h3>")
+    c.add_widget(
+        "<p>Pick a file; it's auto-uploaded and metadata about the spool "
+        "file appears below. Wt manages the temp file lifecycle — read it "
+        "in the <code>uploaded</code> slot, before the request returns.</p>")
+
+    upload = c.add_widget(wt.WFileUpload())
+    upload.set_filters(".csv,.txt,.json,image/*")
+    upload_btn = c.add_widget(wt.WPushButton("Upload"))
+    log = c.add_widget(wt.WText("<i>(no upload yet)</i>"))
+
+    def on_changed() -> None:
+        # Modern browsers auto-trigger upload after pick, but call it
+        # explicitly so the no-JS fallback works too.
+        upload.upload()
+        upload_btn.disable()
+
+    def on_uploaded() -> None:
+        upload_btn.enable()
+        if upload.empty:
+            log.text = "<i>upload finished but nothing arrived</i>"
+            return
+        files = upload.uploaded_files
+        if not files:
+            # Single-file path: uploaded_files is empty unless multiple=True.
+            log.text = (
+                f"received: spool=<code>{upload.spool_file_name}</code>")
+            return
+        lines = [f"received {len(files)} file(s):<ul>"]
+        for f in files:
+            lines.append(
+                f"<li><b>{f.client_file_name}</b> ({f.content_type}) "
+                f"&rarr; <code>{f.spool_file_name}</code></li>")
+        lines.append("</ul>")
+        log.text = "".join(lines)
+
+    upload.changed.connect(on_changed)
+    upload.uploaded.connect(on_uploaded)
+    return c
+
+
+def make_extras_tab() -> wt.WContainerWidget:
+    """Form widgets that didn't make the first pass.
+
+    Each row shows one widget plus a live readout — picking a color, typing
+    in the password edit, accepting an in-place edit, or selecting from the
+    autocomplete popup updates the readout via the widget's signal.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>Extra form widgets</h3>")
+
+    # ---- WColorPicker ----
+    c.add_widget("<h4>WColorPicker</h4>")
+    picker = c.add_widget(wt.WColorPicker(wt.WColor(0, 128, 196)))
+    color_log = c.add_widget(wt.WText("initial color set"))
+
+    def on_color_changed() -> None:
+        col = picker.color
+        color_log.text = (
+            f"color now rgb(<b>{col.red}</b>, <b>{col.green}</b>, "
+            f"<b>{col.blue}</b>) alpha=<b>{col.alpha}</b>")
+    picker.changed.connect(on_color_changed)
+
+    # ---- WPasswordEdit ----
+    c.add_widget("<h4>WPasswordEdit (min length 8, must include a digit)</h4>")
+    pwd = c.add_widget(wt.WPasswordEdit())
+    pwd.min_length = 8
+    pwd.required = True
+    pwd.pattern = r".*\d.*"
+    pwd.invalid_too_short_text = "at least 8 chars please"
+    pwd.invalid_no_match_text = "include at least one digit"
+    pwd.invalid_blank_text = "password is required"
+
+    # ---- WInPlaceEdit ----
+    c.add_widget("<h4>WInPlaceEdit (click the text below)</h4>")
+    ipe = c.add_widget(wt.WInPlaceEdit("click to edit me"))
+    ipe.placeholder_text = "type something…"
+    ipe_log = c.add_widget(wt.WText(""))
+
+    def on_ipe_changed(new_text: str) -> None:
+        ipe_log.text = f"new value: <b>{new_text}</b>"
+    ipe.value_changed.connect(on_ipe_changed)
+
+    # ---- WSuggestionPopup wired to a WLineEdit ----
+    c.add_widget("<h4>WSuggestionPopup (autocomplete — type 'b')</h4>")
+    target = c.add_widget(wt.WLineEdit())
+    target.placeholder_text = "fruit name…"
+
+    opts = wt.WSuggestionPopup.Options()
+    opts.highlight_begin_tag = "<b>"
+    opts.highlight_end_tag = "</b>"
+    opts.whitespace = " \n"
+    opts.word_separators = " "
+    opts.list_separator = ""
+
+    popup = c.add_widget(wt.WSuggestionPopup(opts))
+    for fruit in ("apple", "banana", "blackberry", "blueberry",
+                  "cherry", "grape", "kiwi", "mango", "orange",
+                  "pear", "raspberry", "strawberry"):
+        popup.add_suggestion(fruit)
+    popup.for_edit(target)
+
+    return c
+
+
+def make_timer_tab() -> wt.WContainerWidget:
+    """WTimer — a periodic server-side tick that drives a Python slot.
+
+    Each fire of `timeout` lands in the worker thread under the session's
+    update lock, so widget mutations are safe. We display a counter that
+    increments while the timer is running, plus start/stop buttons.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>WTimer</h3>")
+    c.add_widget(
+        "<p>Click <b>Start</b> to begin a server-side timer firing every "
+        "500&nbsp;ms. Each tick mutates the counter widget below — exercising "
+        "the slot-on-worker-thread path. <b>Stop</b> cancels it.</p>")
+
+    counter = c.add_widget(wt.WText("ticks: <b>0</b>"))
+
+    timer = wt.WTimer()
+    timer.interval = datetime.timedelta(milliseconds=500)
+    # The timer is kept alive across the function boundary by the bound-
+    # method references stored in the connection registry below
+    # (`timer.start`, `timer.stop`, `timer.timeout.connect(on_tick)`).
+    # Nanobind bound methods hold a strong ref to `self`, and the registry
+    # keeps the connection until the session ends.
+
+    state = {"n": 0}
+
+    def on_tick(_e: wt.WMouseEvent) -> None:
+        state["n"] += 1
+        counter.text = f"ticks: <b>{state['n']}</b>"
+    timer.timeout.connect(on_tick)
+
+    btn_start = c.add_widget(wt.WPushButton("Start"))
+    btn_stop = c.add_widget(wt.WPushButton("Stop"))
+    btn_start.clicked.connect(timer.start)
+    btn_stop.clicked.connect(timer.stop)
+    return c
+
+
 # ---- Application factory + server bootstrap ----
 
 def create_app(env: wt.WEnvironment) -> wt.WApplication:
@@ -438,6 +591,13 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_events_tab(), "Events")
     tabs.add_tab(make_template_tab(), "Template")
     tabs.add_tab(make_resources_tab(), "Resources")
+    tabs.add_tab(make_upload_tab(), "Upload")
+    tabs.add_tab(make_extras_tab(), "Extras")
+    tabs.add_tab(make_timer_tab(), "Timer")
+
+    # Apply Bootstrap5 theme so the gallery looks modern. The theme is owned
+    # via shared_ptr; assigning it to `app.theme` hands ownership to the app.
+    app.theme = wt.WBootstrap5Theme()
     return app
 
 

@@ -9,6 +9,7 @@
 #include <Wt/WEnvironment.h>
 #include <Wt/WContainerWidget.h>
 #include <Wt/WLength.h>
+#include <Wt/WTheme.h>         // for WApplication.theme property
 
 namespace witty_for_python {
 
@@ -117,7 +118,14 @@ void register_application(nb::module_& m) {
              "Force a server-initiated update push to the connected client. "
              "Combine with WServer.post() for cross-thread updates.")
         .def_static("instance", &Wt::WApplication::instance,
-                    nb::rv_policy::reference);
+                    nb::rv_policy::reference)
+        // The theme is owned via shared_ptr — nanobind keeps the Python
+        // WTheme wrapper alive while the application holds a reference.
+        .def_prop_rw("theme",
+            [](const Wt::WApplication& a) { return a.theme(); },
+            [](Wt::WApplication& a, const std::shared_ptr<Wt::WTheme>& t) {
+                a.setTheme(t);
+            });
 
     // Cross-thread: hold this lock for exclusive access to an app from a
     // thread other than its session's worker thread. RAII — release happens

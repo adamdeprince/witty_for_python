@@ -6,6 +6,7 @@
 #include <nanobind/stl/unique_ptr.h>
 #include <nanobind/stl/shared_ptr.h>
 #include <nanobind/stl/function.h>
+#include <nanobind/stl/chrono.h>
 
 #include <Wt/WString.h>
 
@@ -54,6 +55,10 @@ void register_datetime(nb::module_& m);
 void register_template(nb::module_& m);
 void register_navigation(nb::module_& m);
 void register_resource(nb::module_& m);
+void register_themes(nb::module_& m);
+void register_timer(nb::module_& m);
+void register_upload(nb::module_& m);
+void register_extra_form(nb::module_& m);
 void register_table(nb::module_& m);
 void register_layout(nb::module_& m);
 void register_server(nb::module_& m);

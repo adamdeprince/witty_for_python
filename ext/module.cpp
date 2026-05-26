@@ -29,6 +29,16 @@ NB_MODULE(_witty_for_python, m) {
     witty_for_python::register_table(m);
     witty_for_python::register_layout(m);
     witty_for_python::register_server(m);
+    // Theme classes (WCssTheme, WBootstrap5Theme) — depend only on WObject.
+    witty_for_python::register_themes(m);
+    // WTimer — depends on WObject + the MouseEventSignal binding from
+    // register_signals (timeout returns EventSignal<WMouseEvent>).
+    witty_for_python::register_timer(m);
+    // WFileUpload — depends on WWidget (so register_application).
+    witty_for_python::register_upload(m);
+    // Extra form widgets — most extend WLineEdit / WTextArea /
+    // WFormWidget, so they need register_form already run.
+    witty_for_python::register_extra_form(m);
 
     // Module-level helpers used by the Python atexit handler in
     // witty_for_python/__init__.py to drop every Python-callable connection before
