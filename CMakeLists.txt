@@ -101,6 +101,7 @@ set(WITTY_FOR_PYTHON_SOURCES
   ext/bind_datetime.cpp
   ext/bind_template.cpp
   ext/bind_navigation.cpp
+  ext/bind_resource.cpp
   ext/bind_table.cpp
   ext/bind_layout.cpp
   ext/bind_server.cpp)

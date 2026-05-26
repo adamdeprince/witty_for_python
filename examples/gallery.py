@@ -374,6 +374,47 @@ def make_template_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_resources_tab() -> wt.WContainerWidget:
+    """Server-side resources — content the browser fetches by URL.
+
+    A ``WMemoryResource`` stores bytes the server hands out on demand.
+    Wrapping it in a ``WAnchor`` (or ``WImage`` for binary image data) gives
+    the user a clickable link. Mutating ``resource.data`` then calling
+    ``resource.set_changed()`` invalidates any browser-side cache so the next
+    fetch reflects the new content — useful for download buttons whose
+    payload depends on UI state.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>WResource — dynamic CSV download</h3>")
+    c.add_widget(
+        "<p>The link below points at a <code>WMemoryResource</code>. Click "
+        "<b>Regenerate</b> to rewrite its byte payload server-side and "
+        "invalidate the browser cache — the next download then sees the "
+        "fresh content with a new timestamp.</p>")
+
+    csv = wt.WMemoryResource("text/csv")
+    csv.suggest_file_name("export.csv")
+    csv.set_disposition_type(wt.ContentDisposition.Attachment)
+
+    def regenerate() -> None:
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        rows = [b"row,value,generated_at"]
+        for i in range(5):
+            rows.append(f"{i},{i * i},{now}".encode("utf-8"))
+        csv.data = b"\n".join(rows) + b"\n"
+        csv.set_changed()
+
+    regenerate()  # initial payload so the link is non-empty on first load
+
+    # WAnchor accepts a WResource directly via WLink's implicit constructor
+    # — same ergonomic shortcut the str → WLink path provides.
+    c.add_widget(wt.WAnchor(csv, "Download export.csv"))
+    c.add_widget("<br>")
+    c.add_widget(wt.WPushButton("Regenerate")).clicked.connect(regenerate)
+
+    return c
+
+
 # ---- Application factory + server bootstrap ----
 
 def create_app(env: wt.WEnvironment) -> wt.WApplication:
@@ -396,6 +437,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_dialog_tab(), "Dialogs")
     tabs.add_tab(make_events_tab(), "Events")
     tabs.add_tab(make_template_tab(), "Template")
+    tabs.add_tab(make_resources_tab(), "Resources")
     return app
 
 

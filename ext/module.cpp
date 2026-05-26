@@ -13,6 +13,11 @@ NB_MODULE(_witty_for_python, m) {
     // register_application invokes register_validators internally between
     // WInteractWidget and WFormWidget (which needs the validator types).
     witty_for_python::register_application(m);
+    // register_resource binds WLink (which depends only on WObject, and
+    // wants WResource present so its `shared_ptr<WResource>` implicit
+    // constructor can be registered). Everything that uses WLink as a
+    // parameter (WAnchor, WImage, …) must come *after* this call.
+    witty_for_python::register_resource(m);
     witty_for_python::register_container(m);
     witty_for_python::register_widgets(m);
     witty_for_python::register_form(m);

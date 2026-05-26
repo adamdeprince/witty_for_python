@@ -53,6 +53,7 @@ void register_form(nb::module_& m);
 void register_datetime(nb::module_& m);
 void register_template(nb::module_& m);
 void register_navigation(nb::module_& m);
+void register_resource(nb::module_& m);
 void register_table(nb::module_& m);
 void register_layout(nb::module_& m);
 void register_server(nb::module_& m);

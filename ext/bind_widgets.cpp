@@ -11,17 +11,10 @@
 namespace witty_for_python {
 
 void register_widgets(nb::module_& m) {
-    // The URL constructor is marked `init_implicit` so a plain `str` auto-
-    // converts to a `WLink` anywhere a WLink is expected — constructors of
-    // WAnchor / WImage, the `link` setters on those plus WPushButton, etc.
-    // Users can still construct one explicitly (`pw.WLink("…")`) when they
-    // need to set link properties or work with a `WResource`.
-    nb::class_<Wt::WLink>(m, "WLink")
-        .def(nb::init<>())
-        .def(nb::init_implicit<const std::string&>(), "url"_a)
-        .def_prop_rw("url",
-            [](const Wt::WLink& l) { return l.url(); },
-            [](Wt::WLink& l, const std::string& u) { l.setUrl(u); });
+    // WLink itself (with both str and shared_ptr<WResource> implicit
+    // constructors) is bound in bind_resource.cpp — register_resource runs
+    // before register_widgets in module.cpp so by the time we use WLink as
+    // a parameter type below, the Python class is already established.
 
     nb::class_<Wt::WText, Wt::WInteractWidget>(m, "WText")
         .def(nb::init<>())
