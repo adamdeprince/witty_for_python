@@ -788,6 +788,68 @@ def make_chrome_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_quick_wins_tab() -> wt.WContainerWidget:
+    """Bits from the 'quick wins' bundle: WLength, WIcon, WIconPair,
+    WBorderLayout in a small demo, and an animated show/hide on a
+    container using WAnimation.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>Quick wins</h3>")
+
+    # ---- WIcon + WIconPair ----
+    c.add_widget("<h4>WIcon + WIconPair</h4>")
+    row = c.add_widget(wt.WContainerWidget())
+    row.add_widget("Inline icon: ")
+    row.add_widget(wt.WIcon("play"))
+    row.add_widget("&nbsp;&nbsp;Togglable pair (click an icon): ")
+    pair = row.add_widget(wt.WIconPair("play", "pause", True))
+    pair.set_icons_type(wt.IconType.IconName)
+    pair_log = c.add_widget(wt.WText("(state 0 — first icon)"))
+
+    def on_pair_changed(_e: wt.WMouseEvent) -> None:
+        pair_log.text = f"state {pair.state} — icon{pair.state + 1} visible"
+    pair.icon1_clicked.connect(on_pair_changed)
+    pair.icon2_clicked.connect(on_pair_changed)
+
+    # ---- WLength: explicit units on a sized box ----
+    c.add_widget("<h4>WLength sizing</h4>")
+    sized = c.add_widget(wt.WContainerWidget())
+    sized.style_class = "Wt-filedropzone"   # reuse Bootstrap-styled border
+    # Width / height accept native units; we wrap an explicit WLength.
+    sized.add_widget(
+        "<p style='padding:0.5em;'>This container is fixed at "
+        f"<code>{wt.WLength(20, wt.LengthUnit.FontEm).to_css_text()}</code> "
+        "wide. WLength values render to CSS via "
+        "<code>to_css_text()</code>.</p>")
+
+    # ---- WAnimation: animated show/hide ----
+    c.add_widget("<h4>WAnimation</h4>")
+    c.add_widget(
+        "<p>Click <b>Toggle</b> to animate the box below in / out.</p>")
+    target = c.add_widget(wt.WContainerWidget())
+    target.style_class = "Wt-filedropzone"
+    target.add_widget(
+        "<p style='padding:0.5em;'>Hello — I appear with a "
+        "<b>SlideInFromLeft + Fade</b> effect.</p>")
+
+    anim = wt.WAnimation(
+        int(wt.AnimationEffect.SlideInFromLeft) | int(wt.AnimationEffect.Fade),
+        wt.TimingFunction.EaseOut,
+        400)
+
+    btn = c.add_widget(wt.WPushButton("Toggle"))
+    state = {"shown": True}
+    def toggle() -> None:
+        if state["shown"]:
+            target.animate_hide(anim)
+        else:
+            target.animate_show(anim)
+        state["shown"] = not state["shown"]
+    btn.clicked.connect(toggle)
+
+    return c
+
+
 # ---- Application factory + server bootstrap ----
 
 def create_app(env: wt.WEnvironment) -> wt.WApplication:
@@ -816,6 +878,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_extras_tab(), "Extras")
     tabs.add_tab(make_chrome_tab(), "Chrome")
     tabs.add_tab(make_modelview_tab(), "Data")
+    tabs.add_tab(make_quick_wins_tab(), "Quick wins")
     tabs.add_tab(make_timer_tab(), "Timer")
 
     # Apply Bootstrap5 theme so the gallery looks modern. The theme is owned

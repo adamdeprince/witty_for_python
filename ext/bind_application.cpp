@@ -9,6 +9,7 @@
 #include <Wt/WEnvironment.h>
 #include <Wt/WContainerWidget.h>
 #include <Wt/WLength.h>
+#include <Wt/WAnimation.h>     // for WWidget animate_show / animate_hide
 #include <Wt/WTheme.h>         // for WApplication.theme property
 
 namespace witty_for_python {
@@ -49,6 +50,11 @@ void register_application(nb::module_& m) {
         .def_prop_rw("hidden",
             [](const Wt::WWidget& w) { return w.isHidden(); },
             [](Wt::WWidget& w, bool h) { w.setHidden(h); })
+        .def("animate_show", &Wt::WWidget::animateShow, "animation"_a,
+             "Show the widget with a transition. Pass a `WAnimation` "
+             "describing the slide/fade/timing.")
+        .def("animate_hide", &Wt::WWidget::animateHide, "animation"_a,
+             "Hide with a transition. Inverse of animate_show.")
         .def_prop_rw("style_class",
             [](const Wt::WWidget& w) { return w.styleClass(); },
             [](Wt::WWidget& w, const Wt::WString& s) { w.setStyleClass(s); })

@@ -43,6 +43,21 @@ NB_MODULE(_witty_for_python, m) {
     // Proxy models (sort/filter, identity, read-only) sit on top of the
     // model/view base classes registered above.
     witty_for_python::register_modelview_proxy(m);
+    // Value types (WLength, WAnimation) — referenced as parameters by
+    // many other bindings, but as value types they only need to be
+    // registered before code that *uses* them as parameter casters at
+    // call time. Placing them here keeps the file organisation tidy.
+    witty_for_python::register_value_types(m);
+    // Event payloads (WDropEvent, WTouchEvent, WGestureEvent,
+    // WScrollEvent + Touch). Standalone value-type bindings — needed
+    // when a future binding routes these as signal payloads.
+    witty_for_python::register_event_payloads(m);
+    // Misc UI widgets (WIcon, WIconPair, WPopupWidget, WNotification,
+    // WLoadingIndicator family). WIcon extends WInteractWidget; others
+    // are WCompositeWidget descendants bound as WWidget.
+    witty_for_python::register_misc_ui(m);
+    // Layouts we missed in the first pass (WBorderLayout, WFitLayout).
+    witty_for_python::register_layouts_extra(m);
     // Extra form widgets — most extend WLineEdit / WTextArea /
     // WFormWidget, so they need register_form already run.
     witty_for_python::register_extra_form(m);
