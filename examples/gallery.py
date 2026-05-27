@@ -788,6 +788,76 @@ def make_chrome_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_chart_tab() -> wt.WContainerWidget:
+    """WCartesianChart + WPieChart over a small in-memory dataset.
+
+    The cartesian chart is fed a 6-row WStandardItemModel where the
+    first column is X (month names) and the next three are Y values
+    (different series). The pie chart shares the same model, slicing
+    by month.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>Charts</h3>")
+    c.add_widget(
+        "<p>Two charts driven by the same <code>WStandardItemModel</code>. "
+        "Painting subsystem under the hood — each chart subclasses "
+        "<code>WPaintedWidget</code> in C++.</p>")
+
+    # ---- Build a small model -------------------------------------------
+    model = wt.WStandardItemModel(6, 4)
+    model.set_header_data(0, "Month")
+    model.set_header_data(1, "Apples")
+    model.set_header_data(2, "Oranges")
+    model.set_header_data(3, "Pears")
+    data = [
+        ("Jan", 12, 18, 8),
+        ("Feb", 16, 14, 11),
+        ("Mar", 22, 13, 17),
+        ("Apr", 30, 11, 20),
+        ("May", 28, 19, 22),
+        ("Jun", 19, 24, 14),
+    ]
+    for r, (m, a, o, p) in enumerate(data):
+        model.set_item(r, 0, wt.WStandardItem(m))
+        model.set_item(r, 1, wt.WStandardItem(str(a)))
+        model.set_item(r, 2, wt.WStandardItem(str(o)))
+        model.set_item(r, 3, wt.WStandardItem(str(p)))
+
+    # ---- Bar chart -----------------------------------------------------
+    c.add_widget("<h4>WCartesianChart (bar)</h4>")
+    bar = c.add_widget(wt.chart.WCartesianChart(wt.chart.ChartType.Category))
+    bar.set_model(model)
+    bar.x_series_column = 0
+    bar.legend_enabled = True
+    bar.set_title("Sales by fruit")
+    for col, series_color in [
+        (1, wt.WColor(0xc0, 0x40, 0x40)),
+        (2, wt.WColor(0xe0, 0x90, 0x20)),
+        (3, wt.WColor(0x40, 0x80, 0xc0)),
+    ]:
+        s = wt.chart.WDataSeries(col, wt.chart.SeriesType.Bar)
+        s.set_brush(wt.WBrush(series_color))
+        bar.add_series(s)
+    bar.set_width(500)
+    bar.set_height(300)
+
+    # ---- Pie chart -----------------------------------------------------
+    c.add_widget("<h4>WPieChart (apples only)</h4>")
+    pie = c.add_widget(wt.chart.WPieChart())
+    pie.set_model(model)
+    pie.set_labels_column(0)   # month names
+    pie.set_data_column(1)     # apples column
+    pie.set_display_labels(
+        int(wt.chart.LabelOption.Outside)
+        | int(wt.chart.LabelOption.TextLabel)
+        | int(wt.chart.LabelOption.TextPercentage))
+    pie.set_perspective_enabled(True, 0.4)
+    pie.set_shadow_enabled(True)
+    pie.set_width(400)
+    pie.set_height(300)
+    return c
+
+
 def make_painting_tab() -> wt.WContainerWidget:
     """WPaintedWidget driven by a Python paint callback.
 
@@ -1001,6 +1071,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_quick_wins_tab(), "Quick wins")
     tabs.add_tab(make_media_tab(), "Media")
     tabs.add_tab(make_painting_tab(), "Painting")
+    tabs.add_tab(make_chart_tab(), "Charts")
     tabs.add_tab(make_timer_tab(), "Timer")
 
     # Apply Bootstrap5 theme so the gallery looks modern. The theme is owned

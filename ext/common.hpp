@@ -70,6 +70,7 @@ void register_layouts_extra(nb::module_& m);
 void register_media(nb::module_& m);
 void register_painting_types(nb::module_& m);
 void register_painting(nb::module_& m);
+void register_chart(nb::module_& m);
 void register_table(nb::module_& m);
 void register_layout(nb::module_& m);
 void register_server(nb::module_& m);

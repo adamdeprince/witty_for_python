@@ -69,6 +69,10 @@ NB_MODULE(_witty_for_python, m) {
     // WPainter + WPaintedWidget (with Python-callback trampoline) +
     // image-map areas. Depends on the value types above.
     witty_for_python::register_painting(m);
+    // Chart subsystem (Wt::Chart::*). Creates a `chart` submodule with
+    // WCartesianChart, WPieChart, WAxis, WDataSeries, and all the chart-
+    // specific enums. Builds on WPaintedWidget + WAbstractItemModel.
+    witty_for_python::register_chart(m);
     // Extra form widgets — most extend WLineEdit / WTextArea /
     // WFormWidget, so they need register_form already run.
     witty_for_python::register_extra_form(m);

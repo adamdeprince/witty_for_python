@@ -119,7 +119,8 @@ set(WITTY_FOR_PYTHON_SOURCES
   ext/bind_layouts_extra.cpp
   ext/bind_media.cpp
   ext/bind_painting_types.cpp
-  ext/bind_painting.cpp)
+  ext/bind_painting.cpp
+  ext/bind_chart.cpp)
 
 # Free-threaded Python (3.13+ with --disable-gil; standard in 3.14+) has no
 # GIL — multiple Python threads can execute concurrently. Wt fires slots from

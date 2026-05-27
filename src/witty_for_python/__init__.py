@@ -14,6 +14,10 @@ from typing import Iterator as _Iterator
 # bundled directories don't exist.
 from . import _witty_for_python as _ext
 
+# Re-export the chart submodule under its native name. nanobind put
+# the chart bindings into `_ext.chart`; expose as `witty_for_python.chart`.
+chart = _ext.chart
+
 
 # Wt's static assets (themes, JS, CSS, icons) shipped alongside the extension.
 # The wheel install layout puts them at <package>/_wt_resources/. Wt's wthttpd
@@ -289,6 +293,7 @@ __all__ = [
     "AnimationEffect",
     "BoolSignal",
     "BrushStyle",
+    "chart",
     "Connection",
     "ContentDisposition",
     "DropEventOriginalEventType",
