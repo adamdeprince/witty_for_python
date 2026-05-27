@@ -67,6 +67,7 @@ void register_value_types(nb::module_& m);
 void register_event_payloads(nb::module_& m);
 void register_misc_ui(nb::module_& m);
 void register_layouts_extra(nb::module_& m);
+void register_media(nb::module_& m);
 void register_table(nb::module_& m);
 void register_layout(nb::module_& m);
 void register_server(nb::module_& m);

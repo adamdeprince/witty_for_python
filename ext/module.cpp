@@ -58,6 +58,10 @@ NB_MODULE(_witty_for_python, m) {
     witty_for_python::register_misc_ui(m);
     // Layouts we missed in the first pass (WBorderLayout, WFitLayout).
     witty_for_python::register_layouts_extra(m);
+    // Media widgets: WAudio, WVideo (extend WAbstractMedia →
+    // WInteractWidget); WMediaPlayer (WCompositeWidget bound as WWidget);
+    // WSound (WObject — non-widget). Adds JDoubleSignal for WMediaPlayer.
+    witty_for_python::register_media(m);
     // Extra form widgets — most extend WLineEdit / WTextArea /
     // WFormWidget, so they need register_form already run.
     witty_for_python::register_extra_form(m);

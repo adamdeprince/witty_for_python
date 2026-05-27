@@ -788,6 +788,60 @@ def make_chrome_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_media_tab() -> wt.WContainerWidget:
+    """WAudio + WVideo + WMediaPlayer.
+
+    No actual media is bundled with the gallery — we point the widgets
+    at the canonical sample-content URLs Mozilla hosts publicly. If
+    you're running this without internet access the players will show
+    their fallback (alternative-content) UI instead.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>Media</h3>")
+    c.add_widget(
+        "<p>Three media widgets. <b>WAudio</b> and <b>WVideo</b> use "
+        "the browser's native &lt;audio&gt;/&lt;video&gt; controls; "
+        "<b>WMediaPlayer</b> renders Wt-skinned controls via jPlayer "
+        "(slightly more setup, more uniform look).</p>")
+
+    # ---- WAudio ----
+    c.add_widget("<h4>WAudio</h4>")
+    audio = c.add_widget(wt.WAudio())
+    audio.add_source(wt.WLink(
+        "https://archive.org/download/testmp3testfile/mpthreetest.mp3"),
+        "audio/mpeg")
+    audio.set_options(int(wt.PlayerOption.Controls))
+    audio.set_preload_mode(wt.MediaPreloadMode.Metadata)
+    audio.set_alternative_content(
+        wt.WText("<i>(your browser can't play this audio)</i>"))
+
+    audio_log = c.add_widget(wt.WText(""))
+
+    def on_audio_start() -> None:
+        audio_log.text = "playing…"
+    def on_audio_pause() -> None:
+        audio_log.text = "paused"
+    def on_audio_end() -> None:
+        audio_log.text = "finished"
+    audio.playback_started.connect(on_audio_start)
+    audio.playback_paused.connect(on_audio_pause)
+    audio.ended.connect(on_audio_end)
+
+    # ---- WVideo ----
+    c.add_widget("<h4>WVideo</h4>")
+    video = c.add_widget(wt.WVideo())
+    video.add_source(wt.WLink(
+        "https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4"),
+        "video/mp4")
+    video.set_options(int(wt.PlayerOption.Controls))
+    video.set_preload_mode(wt.MediaPreloadMode.Metadata)
+    video.set_poster(
+        "https://upload.wikimedia.org/wikipedia/commons/c/c5/Big_buck_bunny_poster_big.jpg")
+    video.set_alternative_content(
+        wt.WText("<i>(your browser can't play this video)</i>"))
+    return c
+
+
 def make_quick_wins_tab() -> wt.WContainerWidget:
     """Bits from the 'quick wins' bundle: WLength, WIcon, WIconPair,
     WBorderLayout in a small demo, and an animated show/hide on a
@@ -879,6 +933,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_chrome_tab(), "Chrome")
     tabs.add_tab(make_modelview_tab(), "Data")
     tabs.add_tab(make_quick_wins_tab(), "Quick wins")
+    tabs.add_tab(make_media_tab(), "Media")
     tabs.add_tab(make_timer_tab(), "Timer")
 
     # Apply Bootstrap5 theme so the gallery looks modern. The theme is owned
