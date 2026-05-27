@@ -788,6 +788,72 @@ def make_chrome_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_painting_tab() -> wt.WContainerWidget:
+    """WPaintedWidget driven by a Python paint callback.
+
+    Demonstrates the value-types (WPointF, WRectF, WBrush, WPen), the
+    builder-style WPainterPath, and stateful WPainter operations
+    (save/restore, translate/rotate). The Redraw button calls
+    widget.update() to schedule a fresh paintEvent — useful when the
+    paint callback closes over Python state that has changed.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>WPaintedWidget</h3>")
+    c.add_widget(
+        "<p>The shape below is rendered every paint event by a Python "
+        "callback that receives a <code>WPainter</code>. The button "
+        "rotates the shape one step and triggers a redraw.</p>")
+
+    state = {"angle": 0.0}
+
+    def paint(p: wt.WPainter) -> None:
+        # Filled shape with a translucent stroke.
+        p.set_brush(wt.WBrush(wt.WColor(0xa0, 0xc0, 0xe0)))
+        pen = wt.WPen(wt.WColor(0x20, 0x40, 0x80))
+        pen.set_width(wt.WLength(2))
+        p.set_pen(pen)
+
+        # Translate to centre + rotate by the current state-angle, then
+        # draw a path so the rotation is visible.
+        p.save()
+        p.translate(150, 150)
+        p.rotate(state["angle"])
+
+        path = wt.WPainterPath()
+        path.move_to(0, -80)
+        path.line_to(70, 50)
+        path.line_to(-70, 50)
+        path.close_sub_path()
+        p.draw_path(path)
+
+        # Add a label inside the shape; centred via Center | Middle.
+        p.set_brush(wt.WBrush(wt.WColor(0xff, 0xff, 0xff)))
+        center_align = int(wt.AlignmentFlag.Center) | int(wt.AlignmentFlag.Middle)
+        p.draw_text(-40, -20, 80, 40, center_align,
+                    f"{int(state['angle']) % 360}°")
+        p.restore()
+
+        # A reference grid (unrotated, around the shape).
+        grid_pen = wt.WPen(wt.WColor(200, 200, 200))
+        grid_pen.set_style(wt.PenStyle.DashLine)
+        p.set_pen(grid_pen)
+        for i in range(0, 300, 30):
+            p.draw_line(0, i, 300, i)
+            p.draw_line(i, 0, i, 300)
+
+    canvas = c.add_widget(wt.WPaintedWidget(paint))
+    canvas.set_width(300)
+    canvas.set_height(300)
+    canvas.set_preferred_method(wt.RenderMethod.HtmlCanvas)
+
+    btn = c.add_widget(wt.WPushButton("Rotate 15°"))
+    def rotate() -> None:
+        state["angle"] += 15.0
+        canvas.update()
+    btn.clicked.connect(rotate)
+    return c
+
+
 def make_media_tab() -> wt.WContainerWidget:
     """WAudio + WVideo + WMediaPlayer.
 
@@ -934,6 +1000,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_modelview_tab(), "Data")
     tabs.add_tab(make_quick_wins_tab(), "Quick wins")
     tabs.add_tab(make_media_tab(), "Media")
+    tabs.add_tab(make_painting_tab(), "Painting")
     tabs.add_tab(make_timer_tab(), "Timer")
 
     # Apply Bootstrap5 theme so the gallery looks modern. The theme is owned

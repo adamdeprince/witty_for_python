@@ -62,6 +62,13 @@ NB_MODULE(_witty_for_python, m) {
     // WInteractWidget); WMediaPlayer (WCompositeWidget bound as WWidget);
     // WSound (WObject — non-widget). Adds JDoubleSignal for WMediaPlayer.
     witty_for_python::register_media(m);
+    // Painting value types (WPointF, WRectF, WLineF, WTransform, WFont,
+    // WPen, WBrush, WPainterPath) — must come before WPainter which
+    // uses them as parameter types.
+    witty_for_python::register_painting_types(m);
+    // WPainter + WPaintedWidget (with Python-callback trampoline) +
+    // image-map areas. Depends on the value types above.
+    witty_for_python::register_painting(m);
     // Extra form widgets — most extend WLineEdit / WTextArea /
     // WFormWidget, so they need register_form already run.
     witty_for_python::register_extra_form(m);
