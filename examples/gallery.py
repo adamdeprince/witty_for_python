@@ -821,7 +821,35 @@ def make_leaflet_tab() -> wt.WContainerWidget:
     leaflet.set_width(500)
     leaflet.set_height(400)
 
+    # ---- markers + popups + tooltip ----
     log = c.add_widget(wt.WText("<i>zoom: 11</i>"))
+
+    # Three landmarks. Each gets a popup (click) + tooltip (hover).
+    landmarks = [
+        (40.7484, -73.9857, "Empire State Building",
+         "Art Deco icon, opened 1931."),
+        (40.6892, -74.0445, "Statue of Liberty",
+         "Gift from France, 1886."),
+        (40.7128, -74.0060, "New York City",
+         "Pop. ~8.3 million."),
+    ]
+    for lat, lon, title, body in landmarks:
+        marker = leaflet.add_marker(
+            wt.WLeafletMap.LeafletMarker(
+                wt.WLeafletMap.Coordinate(lat, lon)))
+        marker.add_popup(
+            wt.WLeafletMap.Popup(f"<b>{title}</b><br>{body}"))
+        marker.add_tooltip(
+            wt.WLeafletMap.Tooltip(title))
+        # Mark the marker as interactive so its clicked signal fires.
+        # (Default Leaflet markers are interactive; we wire the signal
+        # to update the log.)
+        def make_handler(t: str = title) -> "callable":
+            def handler() -> None:
+                log.text = f"clicked: <b>{t}</b>"
+            return handler
+        marker.clicked.connect(make_handler())
+
     def on_zoom_change(level: int) -> None:
         log.text = f"zoom: <b>{level}</b>"
     leaflet.zoom_level_changed.connect(on_zoom_change)
