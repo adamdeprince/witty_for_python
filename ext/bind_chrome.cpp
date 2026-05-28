@@ -127,37 +127,35 @@ void register_chrome(nb::module_& m) {
             "When True, buttons are visually grouped (no internal margins).")
         .def_prop_ro("count", &Wt::WToolBar::count,
             "Number of items (buttons or widgets) currently in the toolbar.")
+        // Re-arm pattern: transfer ownership, mark wrapper non-owning, return
+        // the SAME Python object for fluent chaining (identity + subtype
+        // preserved). See docs/binding_design.md §4.2. Polymorphic on
+        // WPushButton vs WSplitButton — Wt has separate overloads.
         .def("add_button",
-            // Ownership: move the unique_ptr in, return the raw pointer
-            // so the caller keeps a non-owning handle.
-            [](Wt::WToolBar& self, std::unique_ptr<Wt::WPushButton> btn,
-               Wt::AlignmentFlag alignment) -> Wt::WPushButton* {
-                Wt::WPushButton* raw = btn.get();
-                self.addButton(std::move(btn), alignment);
-                return raw;
+            [](Wt::WToolBar& self, nb::object py_btn,
+               Wt::AlignmentFlag alignment) -> nb::object {
+                if (nb::isinstance<Wt::WSplitButton>(py_btn)) {
+                    auto btn = nb::cast<std::unique_ptr<Wt::WSplitButton>>(py_btn);
+                    self.addButton(std::move(btn), alignment);
+                } else {
+                    auto btn = nb::cast<std::unique_ptr<Wt::WPushButton>>(py_btn);
+                    self.addButton(std::move(btn), alignment);
+                }
+                nb::inst_set_state(py_btn, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_btn;
             },
-            "button"_a, "alignment"_a = Wt::AlignmentFlag::Left,
-            nb::rv_policy::reference_internal)
-        .def("add_button",
-            [](Wt::WToolBar& self, std::unique_ptr<Wt::WSplitButton> btn,
-               Wt::AlignmentFlag alignment) -> Wt::WSplitButton* {
-                Wt::WSplitButton* raw = btn.get();
-                self.addButton(std::move(btn), alignment);
-                return raw;
-            },
-            "button"_a, "alignment"_a = Wt::AlignmentFlag::Left,
-            nb::rv_policy::reference_internal,
-            "Add a WSplitButton instead of a plain WPushButton. Returns "
-            "the same widget for chained access.")
+            "button"_a, "alignment"_a = Wt::AlignmentFlag::Left)
         .def("add_widget",
-            [](Wt::WToolBar& self, std::unique_ptr<Wt::WWidget> w,
-               Wt::AlignmentFlag alignment) -> Wt::WWidget* {
-                Wt::WWidget* raw = w.get();
+            [](Wt::WToolBar& self, nb::object py_widget,
+               Wt::AlignmentFlag alignment) -> nb::object {
+                auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_widget);
                 self.addWidget(std::move(w), alignment);
-                return raw;
+                nb::inst_set_state(py_widget, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_widget;
             },
-            "widget"_a, "alignment"_a = Wt::AlignmentFlag::Left,
-            nb::rv_policy::reference_internal)
+            "widget"_a, "alignment"_a = Wt::AlignmentFlag::Left)
         .def("add_separator", &Wt::WToolBar::addSeparator,
              "Add a visual divider between groups of items.");
 
@@ -178,15 +176,16 @@ void register_chrome(nb::module_& m) {
                      "The chevron (right) button — clicking it opens the "
                      "attached WPopupMenu.")
         .def("set_menu",
-            // Move ownership of the popup menu into the split button.
-            [](Wt::WSplitButton& self,
-               std::unique_ptr<Wt::WPopupMenu> menu) {
-                self.setMenu(std::move(menu));
+            [](Wt::WSplitButton& self, nb::object py_menu) {
+                auto m = nb::cast<std::unique_ptr<Wt::WPopupMenu>>(py_menu);
+                self.setMenu(std::move(m));
+                nb::inst_set_state(py_menu, /*ready*/ true,
+                                   /*destruct*/ false);
             },
             "menu"_a,
             "Attach a WPopupMenu as the dropdown. Ownership transfers to "
             "the split button; the Python wrapper becomes a non-owning "
-            "alias of whatever the split button now holds.");
+            "alias of the menu the split button now holds.");
 
     // ---- WNavigationBar: Bootstrap-style top-bar with title, menus,
     //      form fields, and search box ----
@@ -208,44 +207,47 @@ void register_chrome(nb::module_& m) {
              "narrow viewports (Bootstrap responsive behaviour). Wt has no "
              "getter for this — the flag is write-only on the C++ side.")
         .def("add_menu",
-            [](Wt::WNavigationBar& self, std::unique_ptr<Wt::WMenu> menu,
-               Wt::AlignmentFlag alignment) -> Wt::WMenu* {
-                return self.addMenu(std::move(menu), alignment);
+            [](Wt::WNavigationBar& self, nb::object py_menu,
+               Wt::AlignmentFlag alignment) -> nb::object {
+                auto m = nb::cast<std::unique_ptr<Wt::WMenu>>(py_menu);
+                self.addMenu(std::move(m), alignment);
+                nb::inst_set_state(py_menu, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_menu;
             },
-            "menu"_a, "alignment"_a = Wt::AlignmentFlag::Left,
-            nb::rv_policy::reference_internal)
+            "menu"_a, "alignment"_a = Wt::AlignmentFlag::Left)
         .def("add_form_field",
-            [](Wt::WNavigationBar& self, std::unique_ptr<Wt::WWidget> w,
-               Wt::AlignmentFlag alignment) -> Wt::WWidget* {
-                Wt::WWidget* raw = w.get();
+            [](Wt::WNavigationBar& self, nb::object py_widget,
+               Wt::AlignmentFlag alignment) -> nb::object {
+                auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_widget);
                 self.addFormField(std::move(w), alignment);
-                return raw;
+                nb::inst_set_state(py_widget, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_widget;
             },
             "widget"_a, "alignment"_a = Wt::AlignmentFlag::Left,
-            nb::rv_policy::reference_internal,
             "Embed a form field (e.g. a small WLineEdit for a search bar). "
             "Distinct from the standalone add_search variant only in styling.")
         .def("add_search",
-            [](Wt::WNavigationBar& self, std::unique_ptr<Wt::WLineEdit> field,
-               Wt::AlignmentFlag alignment) -> Wt::WLineEdit* {
-                Wt::WLineEdit* raw = field.get();
-                self.addSearch(std::move(field), alignment);
-                return raw;
+            [](Wt::WNavigationBar& self, nb::object py_field,
+               Wt::AlignmentFlag alignment) -> nb::object {
+                auto f = nb::cast<std::unique_ptr<Wt::WLineEdit>>(py_field);
+                self.addSearch(std::move(f), alignment);
+                nb::inst_set_state(py_field, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_field;
             },
-            "field"_a, "alignment"_a = Wt::AlignmentFlag::Left,
-            nb::rv_policy::reference_internal)
+            "field"_a, "alignment"_a = Wt::AlignmentFlag::Left)
         .def("add_widget",
-            // WNavigationBar::addWidget returns void; we wrap to return the
-            // raw pointer for the same chained-access ergonomics as
-            // everywhere else in the binding.
-            [](Wt::WNavigationBar& self, std::unique_ptr<Wt::WWidget> w,
-               Wt::AlignmentFlag alignment) -> Wt::WWidget* {
-                Wt::WWidget* raw = w.get();
+            [](Wt::WNavigationBar& self, nb::object py_widget,
+               Wt::AlignmentFlag alignment) -> nb::object {
+                auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_widget);
                 self.addWidget(std::move(w), alignment);
-                return raw;
+                nb::inst_set_state(py_widget, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_widget;
             },
-            "widget"_a, "alignment"_a = Wt::AlignmentFlag::Left,
-            nb::rv_policy::reference_internal);
+            "widget"_a, "alignment"_a = Wt::AlignmentFlag::Left);
 }
 
 }  // namespace witty_for_python

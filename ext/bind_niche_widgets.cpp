@@ -224,12 +224,15 @@ void register_niche_widgets(nb::module_& m) {
             "https://leafletjs.com/reference.html for the full list.")
         .def("set_content",
             [](Wt::WLeafletMap::AbstractOverlayItem& self,
-               std::unique_ptr<Wt::WWidget> content) {
-                self.setContent(std::move(content));
+               nb::object py_content) {
+                auto c = nb::cast<std::unique_ptr<Wt::WWidget>>(py_content);
+                self.setContent(std::move(c));
+                nb::inst_set_state(py_content, /*ready*/ true,
+                                   /*destruct*/ false);
             },
             "content"_a,
             "Replace the overlay's content with a widget. Ownership "
-            "transfers — the Python wrapper becomes a non-owning alias.")
+            "transfers; the Python wrapper is re-armed as a non-owning alias.")
         .def("set_content_text",
             [](Wt::WLeafletMap::AbstractOverlayItem& self,
                const Wt::WString& text) {
@@ -306,14 +309,16 @@ void register_niche_widgets(nb::module_& m) {
                    Wt::WLeafletMap::AbstractMapItem>(
             m, "WLeafletMapMarker")
         .def("add_popup",
-            [](Wt::WLeafletMap::Marker& self,
-               std::unique_ptr<Wt::WLeafletMap::Popup> popup)
-                -> Wt::WLeafletMap::Popup* {
-                Wt::WLeafletMap::Popup* raw = popup.get();
-                self.addPopup(std::move(popup));
-                return raw;
+            [](Wt::WLeafletMap::Marker& self, nb::object py_popup)
+                -> nb::object {
+                auto p = nb::cast<std::unique_ptr<Wt::WLeafletMap::Popup>>(
+                    py_popup);
+                self.addPopup(std::move(p));
+                nb::inst_set_state(py_popup, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_popup;
             },
-            "popup"_a, nb::rv_policy::reference_internal,
+            "popup"_a,
             "Attach a popup that opens when the marker is clicked. "
             "Replaces any previously-added popup on this marker.")
         .def("remove_popup",
@@ -328,14 +333,16 @@ void register_niche_widgets(nb::module_& m) {
             nb::rv_policy::reference_internal,
             "Current popup, or None if none is attached.")
         .def("add_tooltip",
-            [](Wt::WLeafletMap::Marker& self,
-               std::unique_ptr<Wt::WLeafletMap::Tooltip> tooltip)
-                -> Wt::WLeafletMap::Tooltip* {
-                Wt::WLeafletMap::Tooltip* raw = tooltip.get();
-                self.addTooltip(std::move(tooltip));
-                return raw;
+            [](Wt::WLeafletMap::Marker& self, nb::object py_tooltip)
+                -> nb::object {
+                auto t = nb::cast<std::unique_ptr<Wt::WLeafletMap::Tooltip>>(
+                    py_tooltip);
+                self.addTooltip(std::move(t));
+                nb::inst_set_state(py_tooltip, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_tooltip;
             },
-            "tooltip"_a, nb::rv_policy::reference_internal,
+            "tooltip"_a,
             "Attach a tooltip that appears on hover. Replaces any "
             "previously-added tooltip.")
         .def("remove_tooltip",
@@ -418,37 +425,40 @@ void register_niche_widgets(nb::module_& m) {
             "scrolls or pinches.")
         // ---- overlay management ----
         .def("add_marker",
-            [](Wt::WLeafletMap& self,
-               std::unique_ptr<Wt::WLeafletMap::Marker> marker)
-                -> Wt::WLeafletMap::Marker* {
-                Wt::WLeafletMap::Marker* raw = marker.get();
-                self.addMarker(std::move(marker));
-                return raw;
+            [](Wt::WLeafletMap& self, nb::object py_marker) -> nb::object {
+                auto m = nb::cast<std::unique_ptr<Wt::WLeafletMap::Marker>>(
+                    py_marker);
+                self.addMarker(std::move(m));
+                nb::inst_set_state(py_marker, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_marker;
             },
-            "marker"_a, nb::rv_policy::reference_internal,
+            "marker"_a,
             "Attach a Marker (LeafletMarker or WidgetMarker) to the map. "
-            "Ownership transfers; the returned reference can be used to "
-            "wire signals or call add_popup/add_tooltip on it.")
+            "Ownership transfers; the wrapper is re-armed as a non-owning "
+            "alias, so chains like `m.add_marker(mkr).add_popup(p)` work.")
         .def("add_popup",
-            [](Wt::WLeafletMap& self,
-               std::unique_ptr<Wt::WLeafletMap::Popup> popup)
-                -> Wt::WLeafletMap::Popup* {
-                Wt::WLeafletMap::Popup* raw = popup.get();
-                self.addPopup(std::move(popup));
-                return raw;
+            [](Wt::WLeafletMap& self, nb::object py_popup) -> nb::object {
+                auto p = nb::cast<std::unique_ptr<Wt::WLeafletMap::Popup>>(
+                    py_popup);
+                self.addPopup(std::move(p));
+                nb::inst_set_state(py_popup, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_popup;
             },
-            "popup"_a, nb::rv_policy::reference_internal,
+            "popup"_a,
             "Attach a standalone Popup to the map (separate from any "
             "marker). The popup opens at its configured coordinate.")
         .def("add_tooltip",
-            [](Wt::WLeafletMap& self,
-               std::unique_ptr<Wt::WLeafletMap::Tooltip> tooltip)
-                -> Wt::WLeafletMap::Tooltip* {
-                Wt::WLeafletMap::Tooltip* raw = tooltip.get();
-                self.addTooltip(std::move(tooltip));
-                return raw;
+            [](Wt::WLeafletMap& self, nb::object py_tooltip) -> nb::object {
+                auto t = nb::cast<std::unique_ptr<Wt::WLeafletMap::Tooltip>>(
+                    py_tooltip);
+                self.addTooltip(std::move(t));
+                nb::inst_set_state(py_tooltip, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_tooltip;
             },
-            "tooltip"_a, nb::rv_policy::reference_internal);
+            "tooltip"_a);
 
     // Re-attach all the nested types under their natural names so users
     // can write wt.WLeafletMap.Marker rather than wt.WLeafletMapMarker.

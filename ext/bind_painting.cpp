@@ -255,30 +255,27 @@ void register_painting(nb::module_& m) {
         .def_prop_ro("preferred_method",
             &Wt::WPaintedWidget::preferredMethod)
         .def("add_area",
-            // Ownership: move unique_ptr in, return raw pointer for
-            // chained access (matches the project's add_widget pattern).
-            [](PyPaintedWidget& self,
-               std::unique_ptr<Wt::WAbstractArea> area)
-                -> Wt::WAbstractArea* {
-                Wt::WAbstractArea* raw = area.get();
-                self.addArea(std::move(area));
-                return raw;
+            [](PyPaintedWidget& self, nb::object py_area) -> nb::object {
+                auto a = nb::cast<std::unique_ptr<Wt::WAbstractArea>>(py_area);
+                self.addArea(std::move(a));
+                nb::inst_set_state(py_area, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_area;
             },
             "area"_a,
-            nb::rv_policy::reference_internal,
             "Attach an image-map area (WRectArea / WCircleArea / "
             "WPolygonArea) that becomes a clickable region on top of "
             "the painted output.")
         .def("insert_area",
-            [](PyPaintedWidget& self, int index,
-               std::unique_ptr<Wt::WAbstractArea> area)
-                -> Wt::WAbstractArea* {
-                Wt::WAbstractArea* raw = area.get();
-                self.insertArea(index, std::move(area));
-                return raw;
+            [](PyPaintedWidget& self, int index, nb::object py_area)
+                -> nb::object {
+                auto a = nb::cast<std::unique_ptr<Wt::WAbstractArea>>(py_area);
+                self.insertArea(index, std::move(a));
+                nb::inst_set_state(py_area, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_area;
             },
-            "index"_a, "area"_a,
-            nb::rv_policy::reference_internal);
+            "index"_a, "area"_a);
 
     // ---- RenderMethod (used by setPreferredMethod) ----
 

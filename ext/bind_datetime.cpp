@@ -114,9 +114,10 @@ void register_datetime(nb::module_& m) {
     // ---- WTimeValidator (inherits WRegExpValidator, not WValidator directly) ----
 
     nb::class_<Wt::WTimeValidator, Wt::WRegExpValidator>(m, "WTimeValidator")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "format"_a)
-        .def(nb::init<const Wt::WString&, const Wt::WTime&, const Wt::WTime&>(),
+        .def(heap_init<Wt::WTimeValidator>())
+        .def(heap_init<Wt::WTimeValidator, const Wt::WString&>(), "format"_a)
+        .def(heap_init<Wt::WTimeValidator, const Wt::WString&,
+                       const Wt::WTime&, const Wt::WTime&>(),
              "format"_a, "bottom"_a, "top"_a)
         .def_prop_rw("bottom",
             [](const Wt::WTimeValidator& v) { return v.bottom(); },

@@ -102,8 +102,11 @@ void register_container(nb::module_& m) {
              },
              "widget"_a)
         .def("set_layout",
-             [](Wt::WContainerWidget& self, std::unique_ptr<Wt::WLayout> layout) {
-                 self.setLayout(std::move(layout));
+             [](Wt::WContainerWidget& self, nb::object py_layout) {
+                 auto l = nb::cast<std::unique_ptr<Wt::WLayout>>(py_layout);
+                 self.setLayout(std::move(l));
+                 nb::inst_set_state(py_layout, /*ready*/ true,
+                                    /*destruct*/ false);
              },
              "layout"_a);
 }

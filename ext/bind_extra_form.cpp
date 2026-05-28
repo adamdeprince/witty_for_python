@@ -289,8 +289,8 @@ void register_extra_form(nb::module_& m) {
     // docs for placement; the default expects /resources/tinymce/.
 
     nb::class_<Wt::WTextEdit, Wt::WTextArea>(m, "WTextEdit")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WTextEdit>())
+        .def(heap_init<Wt::WTextEdit, const Wt::WString&>(), "text"_a)
         .def_prop_ro("version", &Wt::WTextEdit::version,
             "TinyMCE version currently configured (3 or 4 depending on "
             "what Wt was built against and what's on disk).")

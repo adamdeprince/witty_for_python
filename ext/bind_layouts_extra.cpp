@@ -32,17 +32,15 @@ void register_layouts_extra(nb::module_& m) {
     nb::class_<Wt::WBorderLayout, Wt::WLayout>(m, "WBorderLayout")
         .def(heap_init<Wt::WBorderLayout>())
         .def("add_widget",
-            // Ownership: move in, return raw pointer for chained access
-            // (matching the pattern used elsewhere in the binding).
-            [](Wt::WBorderLayout& self,
-               std::unique_ptr<Wt::WWidget> w,
-               Wt::LayoutPosition position) -> Wt::WWidget* {
-                Wt::WWidget* raw = w.get();
+            [](Wt::WBorderLayout& self, nb::object py_widget,
+               Wt::LayoutPosition position) -> nb::object {
+                auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_widget);
                 self.addWidget(std::move(w), position);
-                return raw;
+                nb::inst_set_state(py_widget, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_widget;
             },
-            "widget"_a, "position"_a,
-            nb::rv_policy::reference_internal);
+            "widget"_a, "position"_a);
 
     // ---- WFitLayout: single-child layout that fills the parent ----
     //
@@ -53,14 +51,14 @@ void register_layouts_extra(nb::module_& m) {
     nb::class_<Wt::WFitLayout, Wt::WLayout>(m, "WFitLayout")
         .def(heap_init<Wt::WFitLayout>())
         .def("add_widget",
-            [](Wt::WFitLayout& self,
-               std::unique_ptr<Wt::WWidget> w) -> Wt::WWidget* {
-                Wt::WWidget* raw = w.get();
+            [](Wt::WFitLayout& self, nb::object py_widget) -> nb::object {
+                auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_widget);
                 self.addWidget(std::move(w));
-                return raw;
+                nb::inst_set_state(py_widget, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_widget;
             },
             "widget"_a,
-            nb::rv_policy::reference_internal,
             "Set the single fitted child. Replacing it requires calling "
             "the inherited removeWidget on the previous one first.");
 }

@@ -119,24 +119,40 @@ void register_navigation(nb::module_& m) {
     nb::class_<Wt::WMenu, Wt::WWidget>(m, "WMenu")
         .def(heap_init<Wt::WMenu>())
         .def(heap_init<Wt::WMenu, Wt::WStackedWidget*>(), "contents_stack"_a)
-        .def("add_item",
-            [](Wt::WMenu& self, std::unique_ptr<Wt::WMenuItem> item) {
-                return self.addItem(std::move(item));
-            },
-            "item"_a, nb::rv_policy::reference_internal)
-        // String overload: wraps the label in a freshly-constructed WMenuItem.
-        // Python-only convenience (Wt has no addItem(WString) on WMenu — its
-        // equivalent is `addItem(std::make_unique<WMenuItem>(label))`).
+        // String overload — wraps the label in a fresh WMenuItem.
+        // Python-only convenience; Wt has no addItem(WString) on WMenu.
+        // Listed BEFORE the widget overload so `menu.add_item("hi")` doesn't
+        // route through the `nb::object → unique_ptr` cast that would
+        // `std::bad_cast` on a str.
         .def("add_item",
             [](Wt::WMenu& self, const Wt::WString& label) {
                 return self.addItem(std::make_unique<Wt::WMenuItem>(label));
             },
             "label"_a, nb::rv_policy::reference_internal)
+        // Widget overload — re-arm pattern: takes the Python wrapper,
+        // transfers ownership, marks the wrapper non-owning, returns it.
+        .def("add_item",
+            [](Wt::WMenu& self, nb::object py_item) -> nb::object {
+                auto it = nb::cast<std::unique_ptr<Wt::WMenuItem>>(py_item);
+                self.addItem(std::move(it));
+                nb::inst_set_state(py_item, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_item;
+            },
+            "item"_a)
         // Bulk add of pre-built items.
         .def("add_items",
-            [](Wt::WMenu& self,
-               std::vector<std::unique_ptr<Wt::WMenuItem>> items) {
-                for (auto& it : items) self.addItem(std::move(it));
+            [](Wt::WMenu& self, nb::list py_items) -> nb::list {
+                nb::list out;
+                for (nb::handle h : py_items) {
+                    nb::object py_it = nb::borrow(h);
+                    auto it = nb::cast<std::unique_ptr<Wt::WMenuItem>>(py_it);
+                    self.addItem(std::move(it));
+                    nb::inst_set_state(py_it, /*ready*/ true,
+                                       /*destruct*/ false);
+                    out.append(py_it);
+                }
+                return out;
             },
             "items"_a)
         // Bulk add of labels — each is wrapped in a fresh WMenuItem.
@@ -159,10 +175,17 @@ void register_navigation(nb::module_& m) {
 
     nb::class_<Wt::WTabWidget, Wt::WWidget>(m, "WTabWidget")
         .def(heap_init<Wt::WTabWidget>())
+        // add_tab returns a WMenuItem (the new tab handle) via Wt's API;
+        // we still re-arm the child wrapper so `tabs.add_tab(c, "t")` then
+        // using `c` continues to work.
         .def("add_tab",
-            [](Wt::WTabWidget& self, std::unique_ptr<Wt::WWidget> child,
+            [](Wt::WTabWidget& self, nb::object py_child,
                const Wt::WString& label) {
-                return self.addTab(std::move(child), label);
+                auto child = nb::cast<std::unique_ptr<Wt::WWidget>>(py_child);
+                auto* item = self.addTab(std::move(child), label);
+                nb::inst_set_state(py_child, /*ready*/ true,
+                                   /*destruct*/ false);
+                return item;
             },
             "child"_a, "label"_a,
             nb::rv_policy::reference_internal)
@@ -200,8 +223,11 @@ void register_navigation(nb::module_& m) {
         .def("collapse", &Wt::WPanel::collapse)
         .def("expand", &Wt::WPanel::expand)
         .def("set_central_widget",
-            [](Wt::WPanel& self, std::unique_ptr<Wt::WWidget> w) {
+            [](Wt::WPanel& self, nb::object py_widget) {
+                auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_widget);
                 self.setCentralWidget(std::move(w));
+                nb::inst_set_state(py_widget, /*ready*/ true,
+                                   /*destruct*/ false);
             },
             "widget"_a);
 
@@ -250,7 +276,7 @@ void register_navigation(nb::module_& m) {
                      nb::rv_policy::reference_internal);
 
     nb::class_<Wt::WMessageBox, Wt::WDialog>(m, "WMessageBox")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WMessageBox>())
         .def_prop_rw("text",
             [](const Wt::WMessageBox& w) { return w.text(); },
             [](Wt::WMessageBox& w, const Wt::WString& t) { w.setText(t); })

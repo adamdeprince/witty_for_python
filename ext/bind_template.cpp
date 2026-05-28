@@ -39,22 +39,22 @@ void register_template(nb::module_& m) {
         .def("set_template_text", &Wt::WTemplate::setTemplateText,
              "text"_a, "format"_a = Wt::TextFormat::XHTML)
 
-        // bind_widget: transfers ownership of `widget` into the template.
-        // The non-template `bindWidget(unique_ptr<WWidget>)` returns void, so
-        // we snapshot the raw pointer before moving — same pattern as
-        // WContainerWidget.add_widget. Returns the non-owning widget handle
-        // (with RTTI to the concrete type) so chains like
-        // `template.bind_widget("ok", wt.WPushButton("ok")).clicked.connect(fn)`
-        // work.
+        // bind_widget: transfers ownership of `widget` into the template
+        // and re-arms the Python wrapper as a non-owning alias (so its
+        // methods still work, but it won't double-free what the template
+        // owns). Returns the SAME Python wrapper for fluent chaining:
+        // `template.bind_widget("ok", wt.WPushButton("ok")).clicked.connect(fn)`.
+        // See docs/binding_design.md §4.2 for the pattern.
         .def("bind_widget",
              [](Wt::WTemplate& self, const std::string& var_name,
-                std::unique_ptr<Wt::WWidget> widget) -> Wt::WWidget* {
-                 Wt::WWidget* raw = widget.get();
-                 self.bindWidget(var_name, std::move(widget));
-                 return raw;
+                nb::object py_widget) -> nb::object {
+                 auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_widget);
+                 self.bindWidget(var_name, std::move(w));
+                 nb::inst_set_state(py_widget, /*ready*/ true,
+                                    /*destruct*/ false);
+                 return py_widget;
              },
-             "var_name"_a, "widget"_a,
-             nb::rv_policy::reference_internal)
+             "var_name"_a, "widget"_a)
 
         // bind_string is the *substitution* path — the value is inlined into
         // the template's rendered text, not added as a child widget. Use

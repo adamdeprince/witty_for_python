@@ -208,7 +208,7 @@ def make_layout_tab() -> wt.WContainerWidget:
     panel = c.add_widget(wt.WPanel())
     panel.title = "Collapsible panel"
     panel.set_title_bar(True)
-    panel.set_collapsible(True)
+    panel.collapsible = True
     inner = wt.WContainerWidget()
     inner.add_widget("Click the title bar to collapse/expand.")
     panel.set_central_widget(inner)
@@ -257,8 +257,8 @@ def make_dialog_tab() -> wt.WContainerWidget:
     # them with no arguments, so the click payload is dropped automatically.
     open_dlg = c.add_widget(wt.WPushButton("Open custom dialog"))
     dlg = c.add_widget(wt.WDialog("A demo dialog"))
-    dlg.set_modal(True)
-    dlg.set_closable(True)
+    dlg.modal = True
+    dlg.closable = True
     dlg.contents.add_widget("Click Accept or Reject.")
     ok = dlg.footer.add_widget(wt.WPushButton("Accept"))
     cancel = dlg.footer.add_widget(wt.WPushButton("Reject"))
@@ -566,7 +566,7 @@ def make_extras_tab() -> wt.WContainerWidget:
     # ---- WSuggestionPopup wired to a WLineEdit ----
     c.add_widget("<h4>WSuggestionPopup (autocomplete — type 'b')</h4>")
     target = c.add_widget(wt.WLineEdit())
-    target.placeholder_text = "fruit name…"
+    target.placeholder = "fruit name…"
 
     opts = wt.WSuggestionPopup.Options()
     opts.highlight_begin_tag = "<b>"
@@ -688,7 +688,7 @@ def make_modelview_tab() -> wt.WContainerWidget:
         "<p>Filter on the Role column (regex, full-string match — wrap "
         "with <code>.*</code> for substring):</p>")
     filter_edit = c.add_widget(wt.WLineEdit())
-    filter_edit.placeholder_text = ".*Engineer.*"
+    filter_edit.placeholder = ".*Engineer.*"
 
     def on_filter_changed() -> None:
         proxy.set_filter_regexp(filter_edit.text)
@@ -748,7 +748,7 @@ def make_chrome_tab() -> wt.WContainerWidget:
     nav_menu.add_item("About")
 
     search = nav.add_search(wt.WLineEdit(), wt.AlignmentFlag.Right)
-    search.placeholder_text = "search…"
+    search.placeholder = "search…"
 
     # ---- WToolBar ----
     c.add_widget("<h4>WToolBar</h4>")

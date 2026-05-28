@@ -47,8 +47,11 @@ void register_form(nb::module_& m) {
             [](const Wt::WLabel& w) { return w.wordWrap(); },
             [](Wt::WLabel& w, bool b) { w.setWordWrap(b); })
         .def("set_image",
-            [](Wt::WLabel& w, std::unique_ptr<Wt::WImage> img) {
+            [](Wt::WLabel& w, nb::object py_img) {
+                auto img = nb::cast<std::unique_ptr<Wt::WImage>>(py_img);
                 w.setImage(std::move(img));
+                nb::inst_set_state(py_img, /*ready*/ true,
+                                   /*destruct*/ false);
             },
             "image"_a);
 
@@ -180,7 +183,7 @@ void register_form(nb::module_& m) {
                      nb::rv_policy::reference_internal);
 
     nb::class_<Wt::WSelectionBox, Wt::WComboBox>(m, "WSelectionBox")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WSelectionBox>())
         .def_prop_rw("vertical_size",
             [](const Wt::WSelectionBox& w) { return w.verticalSize(); },
             [](Wt::WSelectionBox& w, int n) { w.setVerticalSize(n); })
@@ -215,8 +218,13 @@ void register_form(nb::module_& m) {
             },
             nb::rv_policy::reference_internal);
 
+    // WButtonGroup is special: its `addButton` calls `shared_from_this()`
+    // internally, so the group MUST already live inside a std::shared_ptr
+    // before any button is added. Construct via `make_shared` and return
+    // it as shared_ptr — nanobind's shared_ptr from_cpp path stashes the
+    // shared_ptr in keep_alive, so `weak_from_this()` resolves later.
     nb::class_<Wt::WButtonGroup, Wt::WObject>(m, "WButtonGroup")
-        .def(heap_init<Wt::WButtonGroup>())
+        .def(nb::new_([]() { return std::make_shared<Wt::WButtonGroup>(); }))
         .def("add_button",
              nb::overload_cast<Wt::WRadioButton*, int>(&Wt::WButtonGroup::addButton),
              "button"_a, "id"_a = -1)

@@ -311,18 +311,32 @@ void register_modelview(nb::module_& m) {
         .def("set_column_count", &Wt::WStandardItem::setColumnCount,
              "columns"_a)
         .def("append_row",
-            // Take ownership of every item in the row.
-            [](Wt::WStandardItem& self,
-               std::vector<std::unique_ptr<Wt::WStandardItem>> items) {
+            [](Wt::WStandardItem& self, nb::list py_items) {
+                std::vector<std::unique_ptr<Wt::WStandardItem>> items;
+                items.reserve(nb::len(py_items));
+                for (nb::handle h : py_items) {
+                    nb::object py_it = nb::borrow(h);
+                    items.push_back(
+                        nb::cast<std::unique_ptr<Wt::WStandardItem>>(py_it));
+                    nb::inst_set_state(py_it, /*ready*/ true,
+                                       /*destruct*/ false);
+                }
                 self.appendRow(std::move(items));
             },
             "items"_a,
-            "Append a single child row. Each item's Python wrapper becomes "
-            "non-owning after the call — fetch back via `child(row, col)` "
-            "if you need to keep editing.")
+            "Append a single child row. Each item's Python wrapper stays "
+            "usable after the call (re-armed as a non-owning alias).")
         .def("append_column",
-            [](Wt::WStandardItem& self,
-               std::vector<std::unique_ptr<Wt::WStandardItem>> items) {
+            [](Wt::WStandardItem& self, nb::list py_items) {
+                std::vector<std::unique_ptr<Wt::WStandardItem>> items;
+                items.reserve(nb::len(py_items));
+                for (nb::handle h : py_items) {
+                    nb::object py_it = nb::borrow(h);
+                    items.push_back(
+                        nb::cast<std::unique_ptr<Wt::WStandardItem>>(py_it));
+                    nb::inst_set_state(py_it, /*ready*/ true,
+                                       /*destruct*/ false);
+                }
                 self.appendColumn(std::move(items));
             },
             "items"_a)
@@ -377,23 +391,40 @@ void register_modelview(nb::module_& m) {
             "Top-level item at (row, column).")
         .def("set_item",
             [](Wt::WStandardItemModel& self, int row, int col,
-               std::unique_ptr<Wt::WStandardItem> item) {
-                self.setItem(row, col, std::move(item));
+               nb::object py_item) {
+                auto it = nb::cast<std::unique_ptr<Wt::WStandardItem>>(py_item);
+                self.setItem(row, col, std::move(it));
+                nb::inst_set_state(py_item, /*ready*/ true,
+                                   /*destruct*/ false);
             },
             "row"_a, "column"_a, "item"_a,
             "Place an item at (row, column). Transfers ownership; the "
-            "Python wrapper becomes non-owning.")
+            "Python wrapper is re-armed as a non-owning alias.")
         .def("append_row",
-            [](Wt::WStandardItemModel& self,
-               std::vector<std::unique_ptr<Wt::WStandardItem>> items) {
+            [](Wt::WStandardItemModel& self, nb::list py_items) {
+                std::vector<std::unique_ptr<Wt::WStandardItem>> items;
+                items.reserve(nb::len(py_items));
+                for (nb::handle h : py_items) {
+                    nb::object py_it = nb::borrow(h);
+                    items.push_back(
+                        nb::cast<std::unique_ptr<Wt::WStandardItem>>(py_it));
+                    nb::inst_set_state(py_it, /*ready*/ true,
+                                       /*destruct*/ false);
+                }
                 self.appendRow(std::move(items));
             },
-            "items"_a,
-            "Append a row of items. Equivalent to invisible_root_item."
-            "append_row.")
+            "items"_a)
         .def("append_column",
-            [](Wt::WStandardItemModel& self,
-               std::vector<std::unique_ptr<Wt::WStandardItem>> items) {
+            [](Wt::WStandardItemModel& self, nb::list py_items) {
+                std::vector<std::unique_ptr<Wt::WStandardItem>> items;
+                items.reserve(nb::len(py_items));
+                for (nb::handle h : py_items) {
+                    nb::object py_it = nb::borrow(h);
+                    items.push_back(
+                        nb::cast<std::unique_ptr<Wt::WStandardItem>>(py_it));
+                    nb::inst_set_state(py_it, /*ready*/ true,
+                                       /*destruct*/ false);
+                }
                 self.appendColumn(std::move(items));
             },
             "items"_a);

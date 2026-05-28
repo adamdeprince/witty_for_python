@@ -66,14 +66,16 @@ void register_media(nb::module_& m) {
             "query (e.g. 'screen and (min-width: 600px)').")
         .def("clear_sources", &Wt::WAbstractMedia::clearSources)
         .def("set_alternative_content",
-            [](Wt::WAbstractMedia& self,
-               std::unique_ptr<Wt::WWidget> alt) {
+            [](Wt::WAbstractMedia& self, nb::object py_alt) {
+                auto alt = nb::cast<std::unique_ptr<Wt::WWidget>>(py_alt);
                 self.setAlternativeContent(std::move(alt));
+                nb::inst_set_state(py_alt, /*ready*/ true,
+                                   /*destruct*/ false);
             },
             "widget"_a,
             "Widget shown to users whose browser can't play any of the "
-            "configured sources. Ownership transfers; the wrapper becomes "
-            "non-owning.")
+            "configured sources. Ownership transfers; the wrapper is "
+            "re-armed as a non-owning alias.")
         .def("set_options",
             [](Wt::WAbstractMedia& self, int options) {
                 self.setOptions(Wt::WFlags<Wt::PlayerOption>(

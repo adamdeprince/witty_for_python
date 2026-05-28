@@ -22,18 +22,33 @@ void register_layout(nb::module_& m) {
 
     nb::class_<Wt::WBoxLayout, Wt::WLayout>(m, "WBoxLayout")
         .def(heap_init<Wt::WBoxLayout, Wt::LayoutDirection>(), "direction"_a)
+        // Re-arm pattern: transfer ownership, then mark the wrapper
+        // non-owning and return it for fluent chaining. See §4.2.
         .def("add_widget",
-             [](Wt::WBoxLayout& self, std::unique_ptr<Wt::WWidget> w, int stretch) {
+             [](Wt::WBoxLayout& self, nb::object py_widget, int stretch)
+                 -> nb::object {
+                 auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_widget);
                  self.addWidget(std::move(w), stretch);
+                 nb::inst_set_state(py_widget, /*ready*/ true,
+                                    /*destruct*/ false);
+                 return py_widget;
              },
              "widget"_a, "stretch"_a = 0)
         // Bulk variant of add_widget. Loops the single form with default
         // stretch=0; per-widget stretch values require the single-call form.
         // Python-only convenience.
         .def("add_widgets",
-             [](Wt::WBoxLayout& self,
-                std::vector<std::unique_ptr<Wt::WWidget>> widgets) {
-                 for (auto& w : widgets) self.addWidget(std::move(w), 0);
+             [](Wt::WBoxLayout& self, nb::list py_widgets) -> nb::list {
+                 nb::list out;
+                 for (nb::handle h : py_widgets) {
+                     nb::object py_w = nb::borrow(h);
+                     auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_w);
+                     self.addWidget(std::move(w), 0);
+                     nb::inst_set_state(py_w, /*ready*/ true,
+                                        /*destruct*/ false);
+                     out.append(py_w);
+                 }
+                 return out;
              },
              "widgets"_a)
         .def("add_stretch", &Wt::WBoxLayout::addStretch, "stretch"_a = 1)
@@ -50,12 +65,17 @@ void register_layout(nb::module_& m) {
     nb::class_<Wt::WGridLayout, Wt::WLayout>(m, "WGridLayout")
         .def(heap_init<Wt::WGridLayout>())
         .def("add_widget",
-             [](Wt::WGridLayout& self, std::unique_ptr<Wt::WWidget> w,
-                int row, int column, int row_span, int column_span) {
+             [](Wt::WGridLayout& self, nb::object py_widget,
+                int row, int column, int row_span, int column_span)
+                 -> nb::object {
+                 auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_widget);
                  // The 6-arg overload requires an alignment; default to none.
                  self.addWidget(std::move(w), row, column,
                                 row_span, column_span,
                                 Wt::WFlags<Wt::AlignmentFlag>());
+                 nb::inst_set_state(py_widget, /*ready*/ true,
+                                    /*destruct*/ false);
+                 return py_widget;
              },
              "widget"_a, "row"_a, "column"_a,
              "row_span"_a = 1, "column_span"_a = 1)

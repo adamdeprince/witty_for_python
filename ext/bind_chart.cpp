@@ -215,8 +215,8 @@ void register_chart(nb::module_& m) {
     // ---- WCartesianChart ----
 
     nb::class_<ch::WCartesianChart, ch::WAbstractChart>(chart, "WCartesianChart")
-        .def(nb::init<>())
-        .def(nb::init<ch::ChartType>(), "type"_a)
+        .def(heap_init<ch::WCartesianChart>())
+        .def(heap_init<ch::WCartesianChart, ch::ChartType>(), "type"_a)
         .def_prop_rw("type",
             &ch::WCartesianChart::type,
             &ch::WCartesianChart::setType)
@@ -227,17 +227,16 @@ void register_chart(nb::module_& m) {
         .def("set_legend_location", &ch::WCartesianChart::setLegendLocation,
              "side"_a, "alignment"_a, "location"_a)
         .def("add_series",
-            // Ownership transfers via unique_ptr; the wrapper becomes
-            // non-owning. Return the raw pointer so users can keep
-            // styling the series afterwards.
-            [](ch::WCartesianChart& self,
-               std::unique_ptr<ch::WDataSeries> series) -> ch::WDataSeries* {
-                ch::WDataSeries* raw = series.get();
-                self.addSeries(std::move(series));
-                return raw;
+            // Re-arm pattern: transfer ownership, mark wrapper non-owning,
+            // return the SAME Python object for fluent chaining.
+            [](ch::WCartesianChart& self, nb::object py_series) -> nb::object {
+                auto s = nb::cast<std::unique_ptr<ch::WDataSeries>>(py_series);
+                self.addSeries(std::move(s));
+                nb::inst_set_state(py_series, /*ready*/ true,
+                                   /*destruct*/ false);
+                return py_series;
             },
-            "series"_a,
-            nb::rv_policy::reference_internal)
+            "series"_a)
         .def_prop_rw("x_series_column",
             &ch::WCartesianChart::XSeriesColumn,
             &ch::WCartesianChart::setXSeriesColumn,
@@ -261,7 +260,7 @@ void register_chart(nb::module_& m) {
     // ---- WPieChart ----
 
     nb::class_<ch::WPieChart, ch::WAbstractChart>(chart, "WPieChart")
-        .def(nb::init<>())
+        .def(heap_init<ch::WPieChart>())
         .def("set_labels_column", &ch::WPieChart::setLabelsColumn,
              "column"_a)
         .def_prop_ro("labels_column", &ch::WPieChart::labelsColumn)
