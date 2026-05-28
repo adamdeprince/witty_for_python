@@ -38,7 +38,7 @@ jobs:
       - name: Enable Yarn via Corepack
         run: corepack enable yarn
 
-      - name: Install Boost + zlib + ninja (Wt's build-time system deps)
+      - name: Install Boost + zlib + libharu + libpng + ninja (Wt build deps)
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
@@ -48,6 +48,8 @@ jobs:
             libboost-filesystem-dev \
             libboost-program-options-dev \
             zlib1g-dev \
+            libhpdf-dev \
+            libpng-dev \
             ninja-build
 
       # ccache wraps the compiler and caches object files keyed on input content.

@@ -5,7 +5,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "witty_for_python"
 version = "0.1.0"
-description = "Python bindings for the Wt (Web Toolkit) C++ library, generated with nanobind. Built wheels bundle Wt (GPLv2) and TinyMCE 6.8.4 (MIT)."
+description = "Python bindings for the Wt (Web Toolkit) C++ library, generated with nanobind. Built wheels bundle Wt (GPLv2), TinyMCE 6.8.4 (MIT), and link against permissively-licensed system libraries (Boost, libharu, libpng, zlib) — see THIRD_PARTY_LICENSES.md for details."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Adam DePrince" }]

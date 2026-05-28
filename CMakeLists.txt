@@ -60,7 +60,7 @@ set(INSTALL_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CONNECTOR_HTTP ON CACHE BOOL "" FORCE)
 set(CONNECTOR_FCGI OFF CACHE BOOL "" FORCE)
 set(ENABLE_SSL OFF CACHE BOOL "" FORCE)
-set(ENABLE_HARU OFF CACHE BOOL "" FORCE)
+set(ENABLE_HARU ON CACHE BOOL "" FORCE)
 set(ENABLE_PANGO OFF CACHE BOOL "" FORCE)
 set(ENABLE_OPENGL OFF CACHE BOOL "" FORCE)
 set(ENABLE_SQLITE OFF CACHE BOOL "" FORCE)
@@ -120,6 +120,7 @@ set(WITTY_FOR_PYTHON_SOURCES
   ext/bind_media.cpp
   ext/bind_painting_types.cpp
   ext/bind_painting.cpp
+  ext/bind_paint_devices.cpp
   ext/bind_chart.cpp
   ext/bind_niche_widgets.cpp
   ext/bind_json.cpp)

@@ -69,6 +69,10 @@ NB_MODULE(_witty_for_python, m) {
     // WPainter + WPaintedWidget (with Python-callback trampoline) +
     // image-map areas. Depends on the value types above.
     witty_for_python::register_painting(m);
+    // Paint devices (WPaintDevice base, WCanvasPaintDevice, WSvgImage,
+    // WMeasurePaintDevice). WPdfImage + WRasterImage skipped — they
+    // need libharu / GD which we don't link.
+    witty_for_python::register_paint_devices(m);
     // Chart subsystem (Wt::Chart::*). Creates a `chart` submodule with
     // WCartesianChart, WPieChart, WAxis, WDataSeries, and all the chart-
     // specific enums. Builds on WPaintedWidget + WAbstractItemModel.

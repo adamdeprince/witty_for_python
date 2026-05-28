@@ -71,13 +71,34 @@ private:
 }  // namespace
 
 void register_painting(nb::module_& m) {
+    // ---- WPainter::Image (nested value type used by drawImage) ----
+    //
+    // Bound BEFORE WPainter itself so the drawImage overloads below can
+    // reference it as a registered parameter type. Re-attached as
+    // WPainter.Image at the bottom of the WPainter binding for the
+    // natural nested-class form.
+
+    auto image_cls = nb::class_<Wt::WPainter::Image>(m, "PainterImage")
+        .def(nb::init<const std::string&, int, int>(),
+             "url"_a, "width"_a, "height"_a,
+             "Reference an external image at `url` with explicit pixel "
+             "dimensions.")
+        .def(nb::init<const std::string&, const std::string&>(),
+             "url"_a, "file"_a,
+             "Reference an image whose pixel dimensions Wt should read "
+             "from local file `file` (the URL is what the browser uses; "
+             "the file is where Wt looks for size metadata).")
+        .def_prop_ro("uri", &Wt::WPainter::Image::uri)
+        .def_prop_ro("width", &Wt::WPainter::Image::width)
+        .def_prop_ro("height", &Wt::WPainter::Image::height);
+
     // ---- WPainter ----
     //
     // The verb interface. Method names match Wt's C++ surface in
     // snake_case. drawText forms take a WRectF and an AlignmentFlag-int
     // bitmask (e.g. AlignmentFlag.Center | AlignmentFlag.Middle).
 
-    nb::class_<Wt::WPainter>(m, "WPainter")
+    auto painter_cls = nb::class_<Wt::WPainter>(m, "WPainter")
         // No public default constructor exposed — Python users receive
         // a WPainter from the WPaintedWidget callback. We expose the
         // device-taking constructor for direct off-screen use.
@@ -169,8 +190,35 @@ void register_painting(nb::module_& m) {
             "alignment"_a, "text"_a,
             "Draw text into the rect. `alignment` is an OR of "
             "AlignmentFlag values (e.g. Center | Middle).")
+        // ---- images ----
+        .def("draw_image",
+            nb::overload_cast<const Wt::WPointF&, const Wt::WPainter::Image&>(
+                &Wt::WPainter::drawImage),
+            "point"_a, "image"_a,
+            "Draw the image at its intrinsic size with top-left at point.")
+        .def("draw_image",
+            nb::overload_cast<const Wt::WPointF&, const Wt::WPainter::Image&,
+                              const Wt::WRectF&>(
+                &Wt::WPainter::drawImage),
+            "point"_a, "image"_a, "source_rect"_a,
+            "Draw a sub-region of the image at its intrinsic size. "
+            "source_rect is in the image's pixel coordinates.")
+        .def("draw_image",
+            nb::overload_cast<const Wt::WRectF&, const Wt::WPainter::Image&>(
+                &Wt::WPainter::drawImage),
+            "dest_rect"_a, "image"_a,
+            "Stretch / shrink the image to fill dest_rect.")
+        .def("draw_image",
+            nb::overload_cast<const Wt::WRectF&, const Wt::WPainter::Image&,
+                              const Wt::WRectF&>(
+                &Wt::WPainter::drawImage),
+            "dest_rect"_a, "image"_a, "source_rect"_a,
+            "Stretch a sub-region of the image into dest_rect.")
         // ---- device / state ----
         .def_prop_ro("is_active", &Wt::WPainter::isActive);
+
+    // Re-attach the Image nested class for the natural form.
+    painter_cls.attr("Image") = image_cls;
 
     // ---- WPaintedWidget (callback shim) ----
     //

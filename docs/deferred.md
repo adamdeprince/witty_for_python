@@ -18,9 +18,12 @@ Skipped while binding the painting subsystem (see
 | ~~`WBorder`~~ | ✅ Bound. Note: multi-arg constructors require all args explicit — nanobind has trouble casting `WColor()` value-typed defaults at module init. | done |
 | `WMatrix4x4`, `WVector3`, `WVector4` | 3-D types — only `WGLWidget` consumes these. | ~150 |
 | `WGLWidget` | Separate WebGL subsystem. | ~200+ |
-| `WPainter::Image` + `drawImage()` overloads | Image-drawing nested class. Needs URL + size handling. | ~60 |
+| ~~`WPainter::Image` + `drawImage()` overloads~~ | ✅ Bound (4 overloads — point/rect destination × optional source-rect). | done |
 | `WPainter::setOpacity` | Declared in some Wt builds but absent in 4.13.x's source. Skip until Wt restores it. | trivial |
-| Paint devices (`WCanvasPaintDevice`, `WSvgImage`, `WPdfImage`, `WRasterImage`, `WVectorImage`, `WMeasurePaintDevice`) | Off-screen rendering targets. Useful for charts and PDF export. | ~250 |
+| ~~`WPaintDevice`, `WCanvasPaintDevice`, `WSvgImage`, `WMeasurePaintDevice`, `WVectorImage`~~ | ✅ Bound. WSvgImage inherits WResource so it can be mounted on a URL. WCanvasPaintDevice/WMeasurePaintDevice construction needs an active WApplication session (unlike WSvgImage). | done |
+| ~~`WPdfImage`~~ | ✅ Bound. We now build Wt with `ENABLE_HARU=ON`; libharu (zlib-licensed) gets linked into `libwt.so`. Attribution in `THIRD_PARTY_LICENSES.md`. | done |
+| `WRasterImage` | Skipped: needs an image library (GD/libpng/etc.) that we don't link. Same configuration story as WPdfImage. | ~80 |
+| `WVmlImage` | Skipped: legacy VML output for old IE — not relevant to modern Wt deployments. | n/a |
 
 ## Model / view
 

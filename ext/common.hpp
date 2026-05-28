@@ -70,6 +70,7 @@ void register_layouts_extra(nb::module_& m);
 void register_media(nb::module_& m);
 void register_painting_types(nb::module_& m);
 void register_painting(nb::module_& m);
+void register_paint_devices(nb::module_& m);
 void register_chart(nb::module_& m);
 void register_niche_widgets(nb::module_& m);
 void register_json(nb::module_& m);

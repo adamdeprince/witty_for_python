@@ -20,8 +20,8 @@ Pre-alpha scaffold. Initial bindings cover:
 - C++23 toolchain (gcc ≥ 13, clang ≥ 17)
 - CMake ≥ 3.26
 - Python ≥ 3.10 (or a free-threaded 3.13t / 3.14t — auto-detected)
-- Boost dev headers + zlib dev (Wt's build-time deps)
-  - Debian / Ubuntu: `sudo apt install libboost-dev libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-program-options-dev zlib1g-dev`
+- Boost dev headers + zlib + libharu + libpng (Wt's build-time deps; libharu backs `WPdfImage`)
+  - Debian / Ubuntu: `sudo apt install libboost-dev libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-program-options-dev zlib1g-dev libhpdf-dev libpng-dev`
 - Node ≥ 16 + Yarn 1.x (to build the vendored TinyMCE; only needed when `WITTY_FOR_PYTHON_BUILD_TINYMCE=ON`, the default)
   - On Ubuntu with Corepack: `sudo corepack enable yarn`
 
@@ -136,9 +136,20 @@ A Wt commercial license obtained from Emweb does **not** grant any commercial li
 
 ### Bundled third-party software
 
-Built wheels redistribute two upstream open-source projects, each vendored as a git submodule so the exact source for any binary we ship can be traced to a specific upstream commit. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for the attribution detail.
+Built wheels redistribute several upstream open-source projects — see [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for full attribution and license texts.
 
-- **Wt 4.13.2** — GPL-2.0-only ("Wt OSS license"). Compatible with witty_for_python's GPLv2. Source at `extern/wt`; license text at `extern/wt/COPYING.GPL2`.
-- **TinyMCE 6.8.4** — MIT license. Compatible with GPLv2. Source at `extern/tinymce`; license text at `extern/tinymce/LICENSE.TXT` and at `_wt_resources/tinymce/license.txt` inside the installed wheel.
+**Vendored at source level** (git submodules under `extern/`, so the exact source for any binary we ship is traceable to a specific upstream commit):
+
+- **Wt 4.13.2** — GPL-2.0-only ("Wt OSS license"). The licensing peer of this project.
+- **TinyMCE 6.8.4** — MIT license. Backs `WTextEdit`.
+
+**Linked transitively** (pulled from the build environment's system packages; the resulting `.so` files end up inside the wheel via `auditwheel repair` during the manylinux release pipeline):
+
+- **Boost** — Boost Software License 1.0. Used by Wt for threading, filesystem, and command-line parsing.
+- **libharu** — zlib/libpng license. Backs `WPdfImage`.
+- **libpng** — libpng license. Pulled in by libharu for PNG image embedding.
+- **zlib** — zlib license. Compression used pervasively across Wt + libharu.
+
+All linked libraries are permissively licensed and combine cleanly with this project's GPL-2.0-only license; the wheel can be redistributed under our license without additional restrictions from these libraries.
 
 Copyright (C) 2026 Adam DePrince. All rights reserved.
