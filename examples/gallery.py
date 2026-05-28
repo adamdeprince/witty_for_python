@@ -788,6 +788,61 @@ def make_chrome_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_niches_tab() -> wt.WContainerWidget:
+    """Small niches: WQrCode + a WPaintedWidget demo with gradients/shadow.
+
+    Doesn't include WGoogleMap because that needs a `google_api_key`
+    config property which the gallery doesn't ship. The QR code is fully
+    standalone.
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>Niches</h3>")
+
+    # ---- WQrCode ----
+    c.add_widget("<h4>WQrCode</h4>")
+    qr = c.add_widget(wt.WQrCode("https://adamdeprince.com",
+                                 wt.ErrorCorrectionLevel.Medium, 6.0))
+    qr.brush = wt.WBrush(wt.WColor(0x20, 0x40, 0x80))
+    c.add_widget("<p>QR code encoded with medium ECL, painted in a "
+                 "custom blue. Scan it to land on the author's site.</p>")
+
+    # ---- WPaintedWidget driven by gradients + shadow ----
+    c.add_widget("<h4>Gradient + shadow demo</h4>")
+
+    def paint(p: wt.WPainter) -> None:
+        # Drop shadow under everything.
+        p.set_shadow(wt.WShadow(4.0, 4.0, wt.WColor(0, 0, 0, 80), 6.0))
+
+        # Gradient-filled rectangle.
+        g1 = wt.WGradient()
+        g1.set_linear_gradient(0, 0, 200, 0)
+        g1.add_color_stop(0.0, wt.WColor(0xff, 0x40, 0x40))
+        g1.add_color_stop(1.0, wt.WColor(0x40, 0x40, 0xff))
+        p.set_brush(wt.WBrush(g1))
+        p.set_pen(wt.WPen())   # no stroke
+        p.draw_rect(20, 20, 200, 100)
+
+        # Radial-gradient circle.
+        g2 = wt.WGradient()
+        g2.set_radial_gradient(330, 70, 50, 320, 60)
+        g2.add_color_stop(0.0, wt.WColor(0xff, 0xff, 0xff))
+        g2.add_color_stop(1.0, wt.WColor(0xc0, 0x40, 0x80))
+        p.set_brush(wt.WBrush(g2))
+        p.draw_ellipse(280, 20, 100, 100)
+
+        # Clear shadow so the label doesn't blur.
+        p.set_shadow(wt.WShadow())
+        p.set_brush(wt.WBrush(wt.WColor(0, 0, 0)))
+        center = int(wt.AlignmentFlag.Center) | int(wt.AlignmentFlag.Middle)
+        p.draw_text(20, 140, 360, 30, center,
+                    "linear & radial gradients, with drop-shadow")
+
+    canvas = c.add_widget(wt.WPaintedWidget(paint))
+    canvas.set_width(400)
+    canvas.set_height(200)
+    return c
+
+
 def make_chart_tab() -> wt.WContainerWidget:
     """WCartesianChart + WPieChart over a small in-memory dataset.
 
@@ -1072,6 +1127,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_media_tab(), "Media")
     tabs.add_tab(make_painting_tab(), "Painting")
     tabs.add_tab(make_chart_tab(), "Charts")
+    tabs.add_tab(make_niches_tab(), "Niches")
     tabs.add_tab(make_timer_tab(), "Timer")
 
     # Apply Bootstrap5 theme so the gallery looks modern. The theme is owned

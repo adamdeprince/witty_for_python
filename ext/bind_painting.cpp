@@ -12,6 +12,7 @@
 #include <Wt/WPainter.h>
 #include <Wt/WPainterPath.h>
 #include <Wt/WPen.h>
+#include <Wt/WShadow.h>
 #include <Wt/WPointF.h>
 #include <Wt/WPolygonArea.h>
 #include <Wt/WRectArea.h>
@@ -91,6 +92,9 @@ void register_painting(nb::module_& m) {
         .def("set_pen", &Wt::WPainter::setPen, "pen"_a)
         .def("set_brush", &Wt::WPainter::setBrush, "brush"_a)
         .def("set_font", &Wt::WPainter::setFont, "font"_a)
+        .def("set_shadow", &Wt::WPainter::setShadow, "shadow"_a,
+             "Apply a drop-shadow effect to subsequent draw operations. "
+             "Pass `wt.WShadow()` to clear.")
         .def_prop_ro("pen", &Wt::WPainter::pen,
                      nb::rv_policy::reference_internal)
         .def_prop_ro("brush", &Wt::WPainter::brush,

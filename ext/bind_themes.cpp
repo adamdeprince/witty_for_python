@@ -1,5 +1,7 @@
 #include "common.hpp"
 
+#include <Wt/WBootstrap2Theme.h>
+#include <Wt/WBootstrap3Theme.h>
 #include <Wt/WBootstrap5Theme.h>
 #include <Wt/WCssTheme.h>
 #include <Wt/WTheme.h>
@@ -46,6 +48,23 @@ void register_themes(nb::module_& m) {
         .def(nb::init<>(),
              "Construct a Bootstrap 5 theme. Attach it to an application "
              "with `app.theme = wt.WBootstrap5Theme()`.");
+
+    // ---- Legacy Bootstrap themes ----
+    //
+    // WBootstrap2Theme + WBootstrap3Theme. Wt bundles these for apps
+    // that haven't migrated to Bootstrap 5 yet. The asset trees live
+    // alongside Bootstrap 5 in the bundled `_wt_resources/themes/`
+    // directory.
+
+    nb::class_<Wt::WBootstrap2Theme, Wt::WTheme>(m, "WBootstrap2Theme")
+        .def(nb::init<>(),
+             "Bootstrap 2 theme. Useful for older apps; new code should "
+             "prefer WBootstrap5Theme.");
+
+    nb::class_<Wt::WBootstrap3Theme, Wt::WTheme>(m, "WBootstrap3Theme")
+        .def(nb::init<>(),
+             "Bootstrap 3 theme. Useful for apps tracking the Bootstrap-3 "
+             "ecosystem; new code should prefer WBootstrap5Theme.");
 }
 
 }  // namespace witty_for_python

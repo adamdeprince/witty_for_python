@@ -1,14 +1,17 @@
 #include "common.hpp"
 
+#include <Wt/WBorder.h>
 #include <Wt/WBrush.h>
 #include <Wt/WFont.h>
 #include <Wt/WGlobal.h>           // PenStyle, BrushStyle, FontFamily, …
+#include <Wt/WGradient.h>
 #include <Wt/WLength.h>
 #include <Wt/WLineF.h>
 #include <Wt/WPainterPath.h>
 #include <Wt/WPen.h>
 #include <Wt/WPointF.h>
 #include <Wt/WRectF.h>
+#include <Wt/WShadow.h>
 #include <Wt/WTransform.h>
 
 #include <string>
@@ -162,6 +165,89 @@ void register_painting_types(nb::module_& m) {
         .def("size_length", &Wt::WFont::sizeLength,
              "medium_size"_a = 16.0);
 
+    // ---- WGradient + GradientStyle ----
+    //
+    // Bound BEFORE WPen / WBrush because both reference WGradient as a
+    // parameter type for set_gradient.
+
+    nb::enum_<Wt::GradientStyle>(m, "GradientStyle")
+        .value("Linear", Wt::GradientStyle::Linear)
+        .value("Radial", Wt::GradientStyle::Radial);
+
+    nb::class_<Wt::WGradient>(m, "WGradient")
+        .def(nb::init<>())
+        .def_prop_ro("style", &Wt::WGradient::style)
+        .def_prop_ro("is_empty", &Wt::WGradient::isEmpty)
+        .def("set_linear_gradient", &Wt::WGradient::setLinearGradient,
+             "x0"_a, "y0"_a, "x1"_a, "y1"_a,
+             "Configure a linear gradient from (x0,y0) to (x1,y1).")
+        .def("set_radial_gradient", &Wt::WGradient::setRadialGradient,
+             "cx"_a, "cy"_a, "r"_a, "fx"_a, "fy"_a,
+             "Configure a radial gradient: bounding circle centred at "
+             "(cx,cy) with radius r, focal point at (fx,fy).")
+        .def("add_color_stop",
+            nb::overload_cast<double, const Wt::WColor&>(
+                &Wt::WGradient::addColorStop),
+            "position"_a, "color"_a,
+            "Add a color stop at `position` (0.0 = start, 1.0 = end).")
+        .def("clear_color_stops", &Wt::WGradient::clearColorStops);
+
+    // ---- WShadow ----
+    //
+    // Applied via WPainter.set_shadow (offsets + blur in the painter's
+    // current coordinate system; color sets the shadow tint).
+
+    nb::class_<Wt::WShadow>(m, "WShadow")
+        .def(nb::init<>())
+        .def(nb::init<double, double, const Wt::WColor&, double>(),
+             "dx"_a, "dy"_a, "color"_a, "blur"_a)
+        .def("set_offsets", &Wt::WShadow::setOffsets, "dx"_a, "dy"_a)
+        .def("set_color", &Wt::WShadow::setColor, "color"_a)
+        .def("set_blur", &Wt::WShadow::setBlur, "blur"_a)
+        .def_prop_ro("offset_x", &Wt::WShadow::offsetX)
+        .def_prop_ro("offset_y", &Wt::WShadow::offsetY)
+        .def_prop_ro("color", &Wt::WShadow::color)
+        .def_prop_ro("blur", &Wt::WShadow::blur)
+        .def_prop_ro("none", &Wt::WShadow::none,
+             "True for the default (no-shadow) value.");
+
+    // ---- WBorder + BorderStyle + BorderWidth ----
+    //
+    // CSS-border value type used by WCssDecorationStyle (not yet bound)
+    // and a few widget set_decoration methods.
+
+    nb::enum_<Wt::BorderStyle>(m, "BorderStyle")
+        .value("None_",   Wt::BorderStyle::None)
+        .value("Hidden",  Wt::BorderStyle::Hidden)
+        .value("Dotted",  Wt::BorderStyle::Dotted)
+        .value("Dashed",  Wt::BorderStyle::Dashed)
+        .value("Solid",   Wt::BorderStyle::Solid)
+        .value("Double",  Wt::BorderStyle::Double)
+        .value("Groove",  Wt::BorderStyle::Groove)
+        .value("Ridge",   Wt::BorderStyle::Ridge)
+        .value("Inset",   Wt::BorderStyle::Inset)
+        .value("Outset",  Wt::BorderStyle::Outset);
+
+    nb::enum_<Wt::BorderWidth>(m, "BorderWidth")
+        .value("Thin",     Wt::BorderWidth::Thin)
+        .value("Medium",   Wt::BorderWidth::Medium)
+        .value("Thick",    Wt::BorderWidth::Thick)
+        .value("Explicit", Wt::BorderWidth::Explicit);
+
+    nb::class_<Wt::WBorder>(m, "WBorder")
+        .def(nb::init<>())
+        .def(nb::init<Wt::BorderStyle, Wt::BorderWidth, Wt::WColor>(),
+             "style"_a, "width"_a, "color"_a)
+        .def(nb::init<Wt::BorderStyle, const Wt::WLength&, Wt::WColor>(),
+             "style"_a, "width"_a, "color"_a,
+             "Explicit-width variant — `width` is a WLength rather than "
+             "the Thin/Medium/Thick preset.")
+        .def("set_style", &Wt::WBorder::setStyle, "style"_a)
+        .def("set_color", &Wt::WBorder::setColor, "color"_a)
+        .def_prop_ro("style", &Wt::WBorder::style)
+        .def_prop_ro("color", &Wt::WBorder::color)
+        .def_prop_ro("explicit_width", &Wt::WBorder::explicitWidth);
+
     // ---- Pen styles + WPen ----
 
     nb::enum_<Wt::PenStyle>(m, "PenStyle")
@@ -191,6 +277,8 @@ void register_painting_types(nb::module_& m) {
         .def("set_join_style", &Wt::WPen::setJoinStyle, "style"_a)
         .def("set_width", &Wt::WPen::setWidth, "width"_a)
         .def("set_color", &Wt::WPen::setColor, "color"_a)
+        .def("set_gradient", &Wt::WPen::setGradient, "gradient"_a,
+             "Use a gradient for the stroke instead of a solid color.")
         .def_prop_ro("color", &Wt::WPen::color)
         .def_prop_ro("style", &Wt::WPen::style)
         .def_prop_ro("cap_style", &Wt::WPen::capStyle)
@@ -208,8 +296,12 @@ void register_painting_types(nb::module_& m) {
         .def(nb::init<>())
         .def(nb::init<Wt::BrushStyle>(), "style"_a)
         .def(nb::init<const Wt::WColor&>(), "color"_a)
+        .def(nb::init<const Wt::WGradient&>(), "gradient"_a,
+             "Construct a gradient-filled brush. style is set to Gradient.")
         .def("set_style", &Wt::WBrush::setStyle, "style"_a)
         .def("set_color", &Wt::WBrush::setColor, "color"_a)
+        .def("set_gradient", &Wt::WBrush::setGradient, "gradient"_a,
+             "Use a gradient for the fill. Sets style to Gradient.")
         .def_prop_ro("color", &Wt::WBrush::color)
         .def_prop_ro("style", &Wt::WBrush::style);
 

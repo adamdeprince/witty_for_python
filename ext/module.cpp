@@ -73,6 +73,10 @@ NB_MODULE(_witty_for_python, m) {
     // WCartesianChart, WPieChart, WAxis, WDataSeries, and all the chart-
     // specific enums. Builds on WPaintedWidget + WAbstractItemModel.
     witty_for_python::register_chart(m);
+    // Niche widgets: WQrCode (WPaintedWidget-derived, painted by Wt
+    // itself), WGoogleMap. Skipped here: WLeafletMap (its addTileLayer
+    // requires Wt::Json::Object — see docs/deferred.md).
+    witty_for_python::register_niche_widgets(m);
     // Extra form widgets — most extend WLineEdit / WTextArea /
     // WFormWidget, so they need register_form already run.
     witty_for_python::register_extra_form(m);

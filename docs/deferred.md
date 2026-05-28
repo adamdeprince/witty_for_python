@@ -13,9 +13,9 @@ Skipped while binding the painting subsystem (see
 
 | Class / method | Why it was skipped | Estimated LOC |
 |---|---|---|
-| `WGradient` | Linear / radial gradient. `WPen.set_gradient` and `WBrush.set_gradient` are commented out pending this. | ~80 |
-| `WShadow` | Drop-shadow on `WPainter.set_shadow`. | ~50 |
-| `WBorder` | Border value type used by `WCssDecorationStyle`. | ~40 |
+| ~~`WGradient`~~ | ✅ Bound (with `WPen.set_gradient` / `WBrush.set_gradient`). | done |
+| ~~`WShadow`~~ | ✅ Bound (`WPainter.set_shadow`). | done |
+| ~~`WBorder`~~ | ✅ Bound. Note: multi-arg constructors require all args explicit — nanobind has trouble casting `WColor()` value-typed defaults at module init. | done |
 | `WMatrix4x4`, `WVector3`, `WVector4` | 3-D types — only `WGLWidget` consumes these. | ~150 |
 | `WGLWidget` | Separate WebGL subsystem. | ~200+ |
 | `WPainter::Image` + `drawImage()` overloads | Image-drawing nested class. Needs URL + size handling. | ~60 |
@@ -60,7 +60,10 @@ Skipped while binding `ext/bind_modelview.cpp` and `ext/bind_modelview_proxy.cpp
 | `WSocketNotifier` | File-descriptor watching. Low-level. | trivial |
 | `WFavicon` family (`WUrlFavicon`, `WRasterFavicon`, `WResourceFavicon`, `WFaviconPair`) | Favicon support. Self-contained. | ~80 |
 | `WWebSocketConnection`, `WWebSocketResource` | WebSocket primitives. | ~100 |
-| Bootstrap 2/3 themes (`WBootstrap2Theme`, `WBootstrap3Theme`, `WBootstrapTheme`) | Legacy versions — `WBootstrap5Theme` is bound. | ~30 |
+| ~~`WBootstrap2Theme`, `WBootstrap3Theme`~~ | ✅ Bound. `WBootstrapTheme` (the older, version-configurable wrapper) remains skipped — the version-specific classes cover its use cases. | done |
 | `WAbstractSpinBox`, `WAbstractToggleButton` | Abstract bases; concrete subclasses (`WSpinBox`, `WDoubleSpinBox`, `WCheckBox`, `WRadioButton`) are bound. | trivial |
-| Misc niche widgets — `WGoogleMap`, `WLeafletMap`, `WQrCode`, `WFlashObject` | Self-contained one-off bindings. | ~150 total |
+| ~~`WQrCode`~~ | ✅ Bound. | done |
+| ~~`WGoogleMap`~~ | ✅ Bound (caveat: needs `google_api_key` config property at server startup). Note: `Coordinate.distance_to` returns kilometres, not metres as the Wt docs claim. | done |
+| `WLeafletMap` | Skipped: `addTileLayer` takes a `Wt::Json::Object` and the rich `AbstractMapItem`/`Marker`/`Popup` hierarchy. Binding it cleanly requires first binding `Wt::Json`. | ~250 |
+| `WFlashObject` | Deprecated browser tech. Not worth binding. | n/a |
 | Custom user types via nanobind trampolines | Python subclassing of `WPaintedWidget` / `WAbstractItemModel` / `WAbstractItemDelegate`. Currently each provides a callback-shim path instead. | per-class |
