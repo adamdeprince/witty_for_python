@@ -9,6 +9,7 @@
 #include <Wt/WLink.h>
 #include <Wt/WPaintedWidget.h>
 #include <Wt/WPaintDevice.h>
+#include <Wt/WResource.h>
 #include <Wt/WPainter.h>
 #include <Wt/WPainterPath.h>
 #include <Wt/WPen.h>
@@ -105,6 +106,28 @@ void register_painting(nb::module_& m) {
         .def(nb::init<Wt::WPaintDevice*>(), "device"_a,
             "Construct a painter bound to a paint device. The device is "
             "not owned; the painter borrows it for its lifetime.")
+        // Fallback overload for WResource-derived paint devices
+        // (WPdfImage, WSvgImage). These inherit BOTH WResource and
+        // WPaintDevice in C++, but nanobind's `class_<T, Base>` only
+        // accepts a single base, so we bind them as WResource subclasses
+        // for the resource-mounting path (`app.add_resource(pdf, ...)`).
+        // The C++ object IS still a WPaintDevice; we recover that view
+        // via dynamic_cast and construct the painter directly.
+        .def("__init__",
+             [](Wt::WPainter* self, Wt::WResource* res) {
+                 auto* dev = dynamic_cast<Wt::WPaintDevice*>(res);
+                 if (!dev) {
+                     throw nb::type_error(
+                         "device must be a WPaintDevice or a WResource "
+                         "that also implements WPaintDevice (e.g. "
+                         "WPdfImage, WSvgImage)");
+                 }
+                 new (self) Wt::WPainter(dev);
+             },
+             "device"_a,
+             "Construct from a WResource that also implements "
+             "WPaintDevice (WPdfImage / WSvgImage). Equivalent to "
+             "passing the WPaintDevice view of the same object.")
         // ---- state ----
         .def("save", &Wt::WPainter::save,
              "Push the current state (pen, brush, font, transform, "

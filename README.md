@@ -94,7 +94,14 @@ Wt 4 uses `std::unique_ptr` for widget ownership; the bindings mirror this:
   The same `re-arm after transfer` pattern is applied across the bindings — see [docs/binding_design.md §4](docs/binding_design.md) for the binding-side rules (every widget class is built via `heap_init` so it can transfer to `unique_ptr`; every `add_*`/`set_*`/`insert_*` method calls `nb::inst_set_state` to mark the source wrapper non-owning after the transfer).
 - Returning a `WApplication` from an entry-point factory hands ownership to the Wt session manager (the factory is invoked through a hand-written closure that pins `WEnvironment` to `rv_policy::reference` so the non-copyable env isn't copied — see §4.3 of the binding-design doc).
 
-Static type-checker note: `add_widget`'s stub is currently `(widget: object) -> object` because nanobind's stubgen doesn't see through the `nb::object → unique_ptr → nb::object` flow. At runtime `isinstance(c.add_widget(b), WPushButton)` is True; for static typing either keep a separate handle or use `cast(WPushButton, c.add_widget(b))`.
+Static typing: nanobind's stubgen sees the fluent methods as `(widget: object) -> object` because the C++ binding takes `nb::object`. `scripts/regenerate_stubs.py` runs a post-processing pass that rewrites those signatures to `(widget: _T) -> _T` with an unbounded `TypeVar`, so:
+
+```python
+btn: wt.WPushButton = container.add_widget(wt.WPushButton("ok"))  # type-checker keeps WPushButton
+container.add_widget(wt.WPushButton("x")).clicked.connect(handler)  # .clicked resolves
+```
+
+The rewrite covers `add_widget`/`add_widgets`/`add_item`/`add_items`/`add_marker`/`add_popup`/`add_tooltip`/`add_button`/`add_series`/`bind_widget`/`add_tab` and a handful of others — anything matching `(self, …, x: object) -> object` or `(self, …, xs: list) -> list` in the raw stub. The bulk variants lift to `list[_T] -> list[_T]`.
 
 ## Signal binding
 

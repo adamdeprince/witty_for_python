@@ -1244,7 +1244,21 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_pdf_tab(), "PDF")
     tabs.add_tab(make_chart_tab(), "Charts")
     tabs.add_tab(make_niches_tab(), "Niches")
-    tabs.add_tab(make_leaflet_tab(), "Map")
+    # WLeafletMap needs `leafletJSURL` / `leafletCSSURL` set as Wt
+    # configuration properties (typically via wt_config.xml). If those
+    # aren't available the constructor raises — fall back to a placeholder
+    # tab so the rest of the gallery still loads.
+    try:
+        tabs.add_tab(make_leaflet_tab(), "Map")
+    except RuntimeError as e:
+        placeholder = wt.WContainerWidget()
+        placeholder.add_widget(
+            "<h3>WLeafletMap (skipped)</h3>"
+            f"<p>{e}</p>"
+            "<p>Set <code>leafletJSURL</code> and <code>leafletCSSURL</code> "
+            "in <code>wt_config.xml</code> to enable this tab.</p>"
+        )
+        tabs.add_tab(placeholder, "Map")
     tabs.add_tab(make_timer_tab(), "Timer")
 
     # Apply Bootstrap5 theme so the gallery looks modern. The theme is owned

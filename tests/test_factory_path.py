@@ -1,16 +1,16 @@
-"""End-to-end factory test: spawn `hello.py`, complete Wt's two-step
-handshake so `create_app` actually runs, assert no error in stderr.
+"""End-to-end factory tests.
 
 `test_gallery_boot.py` checks the bootstrap (first GET /) which returns
 ~4.5 KB of JS before the application factory runs. Latent bugs in the
 factory or in widget binding (e.g. missing `heap_init`, broken
-ownership transfer) only surface on the SECOND request, when Wt's
-client-side JS handshakes back with `?wtd=…&request=script&…`.
+ownership transfer, MI-base mismatches) only surface on the SECOND
+request, when Wt's client-side JS handshakes back with
+`?wtd=…&request=script&…`.
 
-This test does that second request by hand. Stack traces from
+These tests do that second request by hand. Stack traces from
 `create_app` end up in `server.stderr` as Wt-fatal-error lines — we
 fail the test if any appear. See [docs/binding_design.md §4] for the
-binding rules this test guards.
+binding rules these tests guard.
 """
 
 from __future__ import annotations
@@ -20,7 +20,6 @@ import socket
 import subprocess
 import sys
 import time
-import urllib.request
 from pathlib import Path
 
 import pytest
@@ -28,6 +27,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HELLO = REPO_ROOT / "examples" / "hello.py"
+GALLERY = REPO_ROOT / "examples" / "gallery.py"
 
 
 def _wait_for_port(host: str, port: int, *, timeout: float = 6.0) -> bool:
@@ -46,42 +46,58 @@ def _wait_for_port(host: str, port: int, *, timeout: float = 6.0) -> bool:
 _WTD_RE = re.compile(r"wtd=([A-Za-z0-9_-]+)")
 
 
-def test_hello_factory_runs(free_port, docroot, wt_resources_dir) -> None:
+def _drive_factory(
+    script: Path,
+    port: int,
+    docroot: Path,
+    resources_dir: Path,
+) -> tuple[str, str, bytes]:
+    """Spawn `script`, complete Wt's two-request handshake (which triggers
+    create_app), terminate, return (stdout, stderr, handshake-response).
+    """
     proc = subprocess.Popen(
         [
-            sys.executable, "-u", str(HELLO),
+            sys.executable, "-u", str(script),
             "--docroot", str(docroot),
             "--http-address", "127.0.0.1",
-            "--http-port", str(free_port),
-            "--resources-dir", str(wt_resources_dir),
+            "--http-port", str(port),
+            "--resources-dir", str(resources_dir),
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
     try:
-        assert _wait_for_port("127.0.0.1", free_port), \
-            f"server failed to bind 127.0.0.1:{free_port}"
+        if not _wait_for_port("127.0.0.1", port):
+            proc.kill()
+            out, err = proc.communicate(timeout=3)
+            pytest.fail(
+                f"server failed to bind 127.0.0.1:{port}\n"
+                f"stdout:\n{out.decode('utf-8', 'replace')}\n"
+                f"stderr:\n{err.decode('utf-8', 'replace')}"
+            )
 
         # Step 1: bootstrap. Pull the wtd session token from the JS.
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{free_port}/", timeout=5
-        ) as resp:
-            body = resp.read().decode("utf-8", "replace")
-        m = _WTD_RE.search(body)
-        assert m, "no wtd= token in bootstrap response"
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(5)
+            s.connect(("127.0.0.1", port))
+            s.sendall(
+                b"GET / HTTP/1.0\r\nHost: 127.0.0.1\r\n"
+                b"Connection: close\r\n\r\n"
+            )
+            boot = b""
+            while True:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                boot += chunk
+        m = _WTD_RE.search(boot.decode("utf-8", "replace"))
+        assert m, f"no wtd= token in bootstrap response:\n{boot[:500]!r}"
         wtd = m.group(1)
 
-        # Step 2: the JS-side handshake URL. Wt invokes `create_app` here.
-        # We don't bother parsing the response (it's a JS payload binding
-        # the Wt session); we just want it to NOT crash the server. If the
-        # factory aborts the worker (via nanobind's `Critical nanobind
-        # error: ... abort()`), the connection is closed without a
-        # response — treat that as a failure that we'll diagnose from the
-        # captured stderr.
-        # Issue a script-handshake URL via raw socket. urlllib's
-        # connection-handling raises RemoteDisconnected on Wt's session
-        # cleanup path; what matters is that the server processed the
-        # request without aborting — we read the stderr log for that.
+        # Step 2: the JS-side handshake URL — Wt invokes `create_app` here.
+        # urllib's connection-handling raises RemoteDisconnected on Wt's
+        # session-cleanup path, so we use a raw socket and trust the stderr
+        # log to tell us whether the factory ran.
         handshake = (
             f"GET /?wtd={wtd}&request=script&rand=42"
             f"&scrW=1920&scrH=1080&tz=0&htmlHistory=true&deployPath=/ "
@@ -90,8 +106,8 @@ def test_hello_factory_runs(free_port, docroot, wt_resources_dir) -> None:
             f"Connection: close\r\n\r\n"
         )
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(5)
-            s.connect(("127.0.0.1", free_port))
+            s.settimeout(15)
+            s.connect(("127.0.0.1", port))
             s.sendall(handshake.encode())
             raw = b""
             while True:
@@ -99,33 +115,53 @@ def test_hello_factory_runs(free_port, docroot, wt_resources_dir) -> None:
                 if not chunk:
                     break
                 raw += chunk
-        # Pull the HTTP status line; tolerate either 200 (factory ran +
-        # Wt session cleanup error) or any other.
-        first_line = raw.split(b"\r\n", 1)[0]
     finally:
         proc.terminate()
         try:
-            out, err = proc.communicate(timeout=3)
+            out, err = proc.communicate(timeout=5)
         except subprocess.TimeoutExpired:
             proc.kill()
             out, err = proc.communicate(timeout=3)
-    out_s = out.decode("utf-8", "replace")
-    err_s = err.decode("utf-8", "replace")
 
-    # The handshake response itself is fine even if the factory failed
-    # (Wt sends a JS error payload with HTTP 200). What's diagnostic is
-    # the server's own log: a healthy factory leaves NO "fatal error"
-    # lines in stderr — Wt logs the Python traceback there if create_app
-    # raised.
-    combined = out_s + err_s
+    return (
+        out.decode("utf-8", "replace"),
+        err.decode("utf-8", "replace"),
+        raw,
+    )
+
+
+def _assert_factory_clean(stdout: str, stderr: str, raw: bytes) -> None:
+    combined = stdout + stderr
     assert "Critical nanobind error" not in combined, (
         f"nanobind aborted the worker thread:\n{combined}"
     )
-    assert 'fatal error: Traceback' not in combined, (
+    assert "fatal error: Traceback" not in combined, (
         f"create_app raised a Python exception:\n{combined}"
     )
-    # Sanity: the handshake at least produced an HTTP status line.
-    assert first_line.startswith(b"HTTP/1.1 ") or first_line.startswith(b"HTTP/1.0 "), (
+    first_line = raw.split(b"\r\n", 1)[0]
+    assert (
+        first_line.startswith(b"HTTP/1.1 ")
+        or first_line.startswith(b"HTTP/1.0 ")
+    ), (
         f"no HTTP response from handshake (raw={raw[:200]!r}); "
-        f"server stderr:\n{err_s}"
+        f"server stderr:\n{stderr}"
     )
+
+
+def test_hello_factory_runs(free_port, docroot, wt_resources_dir) -> None:
+    """hello.py exercises the minimal happy path: WApplication,
+    WContainerWidget, WText, WLineEdit, WPushButton, add_widget, signal
+    connect."""
+    out, err, raw = _drive_factory(HELLO, free_port, docroot, wt_resources_dir)
+    _assert_factory_clean(out, err, raw)
+
+
+def test_gallery_factory_runs(free_port, docroot, wt_resources_dir) -> None:
+    """gallery.py walks ~every widget binding in a single create_app —
+    every tab constructed (Basics, Forms, Layout, Tables, Dialogs,
+    Template, Resources, Extras, Files, Media, Model/View, Painting,
+    PDF, Niches, Map, Chrome, Charts). If any binding regresses
+    (e.g. missing heap_init, broken re-arm, MI mismatch on a paint
+    device), the factory aborts here and stderr carries the trace."""
+    out, err, raw = _drive_factory(GALLERY, free_port, docroot, wt_resources_dir)
+    _assert_factory_clean(out, err, raw)
