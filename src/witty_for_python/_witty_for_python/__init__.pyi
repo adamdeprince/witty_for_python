@@ -659,6 +659,93 @@ class ContentDisposition(enum.Enum):
 
     Inline = 2
 
+class HttpRequest:
+    @property
+    def method(self) -> str:
+        """HTTP method as a string ('GET', 'POST', 'PUT', ...)."""
+
+    @property
+    def path(self) -> str:
+        """The deploy path at which this request was received."""
+
+    @property
+    def path_info(self) -> str:
+        """Additional path info beyond the deploy path."""
+
+    @property
+    def query_string(self) -> str: ...
+
+    @property
+    def url_scheme(self) -> str: ...
+
+    @property
+    def content_type(self) -> str: ...
+
+    @property
+    def content_length(self) -> int: ...
+
+    @property
+    def user_agent(self) -> str: ...
+
+    @property
+    def client_address(self) -> str: ...
+
+    @property
+    def host_name(self) -> str: ...
+
+    @property
+    def server_name(self) -> str: ...
+
+    @property
+    def server_port(self) -> str: ...
+
+    def get_parameter(self, name: str) -> str | None:
+        """First value for query/POST parameter `name`, or None."""
+
+    def get_parameter_values(self, name: str) -> list[str]:
+        """All values for a parameter (e.g. `?n=a&n=b` → ['a','b'])."""
+
+    @property
+    def parameters(self) -> dict[str, list[str]]:
+        """All query/POST parameters as a dict[str, list[str]]."""
+
+    def header_value(self, field: str) -> str:
+        """Header value (empty string if absent)."""
+
+    def cookie_value(self, name: str) -> str | None:
+        """Cookie value, or None if absent."""
+
+    @property
+    def cookies(self) -> dict[str, str]:
+        """All cookies as a dict[str, str]."""
+
+    def body(self) -> bytes:
+        """
+        Read the entire request body as `bytes`. For application/x-www-form-urlencoded or multipart/form-data Wt has already consumed the stream and exposes the values via `get_parameter` instead.
+        """
+
+class HttpResponse:
+    def set_status(self, status: int) -> None:
+        """Set the HTTP status code (default 200)."""
+
+    def set_content_length(self, length: int) -> None: ...
+
+    def set_mime_type(self, mime_type: str) -> None:
+        """Set the Content-Type. After this (or any write) headers are committed."""
+
+    def add_header(self, name: str, value: str) -> None: ...
+
+    def insert_header(self, name: str, value: str) -> None:
+        """Set an HTTP header, replacing any earlier value with the same name."""
+
+    @overload
+    def write(self, data: bytes) -> None:
+        """Write `bytes` to the response body."""
+
+    @overload
+    def write(self, data: str) -> None:
+        """Write a `str` (UTF-8) to the response body."""
+
 class WResource(WObject):
     def suggest_file_name(self, name: str) -> None:
         """
@@ -750,6 +837,12 @@ class WLink:
 
     @url.setter
     def url(self, arg: str, /) -> None: ...
+
+class CallbackResource(WResource):
+    def __init__(self, callback: Callable) -> None:
+        """
+        Mount a Python callable as an HTTP endpoint. The callable is invoked as `callback(request, response)` on every request, with the GIL held. Exceptions are routed through `PyErr_WriteUnraisable` rather than crashing Wt's worker.
+        """
 
 class WContainerWidget(WInteractWidget):
     def __init__(self) -> None: ...
@@ -1768,6 +1861,11 @@ class WServer:
     def set_server_configuration(self, argv: Sequence[str], wt_config: str = '') -> None: ...
 
     def add_entry_point(self, type: EntryPointType, factory: object, path: str = '/', favicon: str = '') -> None: ...
+
+    def add_resource(self, resource: WResource, path: str) -> None:
+        """
+        Mount `resource` at the given URL path on this server. The path is process-wide (independent of any session). Returns nothing; clients fetch via `http://<server>/<path>`.
+        """
 
     def start(self) -> bool: ...
 

@@ -5,19 +5,13 @@ Run with:
     python examples/hello_with_api.py --docroot . --http-address 0.0.0.0 --http-port 8080
 
 Then point a browser at <http://localhost:8080> for the UI, and
-`curl http://localhost:8080/api/state` for the JSON endpoint.
+`curl http://localhost:8080/api/state` for the dynamic JSON endpoint.
 
-The endpoint is a `WMemoryResource` mounted on the server. It serves
-the same bytes to every client (no per-session state); when the UI
-mutates the underlying state it calls `resource.set_changed()` so the
-next curl sees the new value.
-
-For dynamic resources whose response is computed per-request, Wt's
-intended pattern is a `WResource` subclass overriding
-`handle_request(req, resp)`. That requires a Python-side trampoline
-nanobind binding which `witty_for_python` does not yet ship — for now,
-mutate `WMemoryResource.data` from the UI thread and call
-`set_changed()`.
+The endpoint is a `wt.CallbackResource` — a thin C++ adaptor that
+forwards every request to a Python callable on the Wt worker thread
+(with the GIL acquired). The callback gets a `HttpRequest` (method,
+query params, headers, body, …) and a `HttpResponse` (status,
+mime-type, write) — both valid only for the duration of the call.
 """
 
 from __future__ import annotations
@@ -28,22 +22,25 @@ import sys
 import witty_for_python as wt
 
 
-# Process-wide state the UI mutates and the resource publishes.
+# Process-wide state the UI mutates and the endpoint publishes.
 _state = {"counter": 0, "message": "hello, world"}
 
 
-def _serialize() -> bytes:
-    return json.dumps(_state, indent=2).encode("utf-8")
-
-
-# The resource itself. Initial payload is the empty state.
-_api = wt.WMemoryResource("application/json", _serialize())
-
-
-def _publish() -> None:
-    """Push the current state to the resource and invalidate caches."""
-    _api.data = _serialize()
-    _api.set_changed()
+def handle_state(req: wt.HttpRequest, resp: wt.HttpResponse) -> None:
+    """Serve the current state. Echoes a few request fields too, so the
+    demo doubles as a quick check that headers/params/body land in
+    Python correctly."""
+    body = {
+        **_state,
+        "request": {
+            "method": req.method,
+            "query": dict(req.parameters),
+            "client": req.client_address,
+            "user_agent": req.user_agent,
+        },
+    }
+    resp.set_mime_type("application/json")
+    resp.write(json.dumps(body, indent=2).encode())
 
 
 def create_app(env: wt.WEnvironment) -> wt.WApplication:
@@ -67,12 +64,10 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
 
     def on_bump() -> None:
         _state["counter"] += 1
-        _publish()
     bump.clicked.connect(on_bump)
 
     def on_set_msg() -> None:
         _state["message"] = message.text
-        _publish()
     set_msg.clicked.connect(on_set_msg)
 
     return app
@@ -86,7 +81,7 @@ def main(argv: list[str]) -> int:
     server = wt.WServer()
     server.set_server_configuration(argv)
     server.add_entry_point(wt.EntryPointType.Application, create_app)
-    server.add_resource(_api, "/api/state")
+    server.add_resource(wt.CallbackResource(handle_state), "/api/state")
     return server.run()
 
 

@@ -1,5 +1,10 @@
 #include "common.hpp"
 
+#include <nanobind/stl/map.h>
+#include <nanobind/stl/optional.h>
+
+#include <Wt/Http/Request.h>
+#include <Wt/Http/Response.h>
 #include <Wt/WFileResource.h>
 #include <Wt/WLink.h>
 #include <Wt/WMemoryResource.h>
@@ -7,10 +12,61 @@
 #include <Wt/WStreamResource.h>
 
 #include <memory>
+#include <ostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
 namespace witty_for_python {
+
+namespace {
+
+// Concrete WResource that delegates to a Python callable. We chose a
+// callback-style binding over a trampoline+subclass for the same reason
+// most Python libraries reach for `server.add(callback)` instead of
+// `class MyHandler(Handler): def handle(self, ...)`: callbacks are
+// easier to write (no class boilerplate), easier to compose (closures
+// capture state directly, multiple endpoints = multiple functions),
+// and easier to test (call the function directly).
+//
+// Wt invokes `handleRequest` from a worker thread without holding the
+// GIL; we acquire it before calling the Python callable and pass
+// request + response as non-owning references (they live on Wt's
+// stack and are invalid after the call returns).
+class CallbackResource : public Wt::WResource {
+public:
+    explicit CallbackResource(nb::callable cb) : cb_(std::move(cb)) {
+        // suggestFileName / disposition / etc. stay at WResource
+        // defaults; users can mutate them through the inherited
+        // WResource surface if they need to.
+    }
+
+    ~CallbackResource() override {
+        // Required by every WResource subclass to flush in-flight
+        // continuations before destruction.
+        beingDeleted();
+    }
+
+    void handleRequest(const Wt::Http::Request& request,
+                       Wt::Http::Response& response) override {
+        nb::gil_scoped_acquire gil;
+        try {
+            cb_(nb::cast(request,  nb::rv_policy::reference),
+                nb::cast(response, nb::rv_policy::reference));
+        } catch (const nb::python_error& e) {
+            // Don't let a Python exception unwind through Wt's C++
+            // worker — surface it to Python via the unraisable hook
+            // and let Wt return whatever it had already written.
+            PyErr_SetString(e.type().ptr(), e.what());
+            PyErr_WriteUnraisable(cb_.ptr());
+        }
+    }
+
+private:
+    nb::callable cb_;
+};
+
+}  // namespace
 
 void register_resource(nb::module_& m) {
     // ---- ContentDisposition enum ----
@@ -20,14 +76,122 @@ void register_resource(nb::module_& m) {
         .value("Attachment", Wt::ContentDisposition::Attachment)
         .value("Inline", Wt::ContentDisposition::Inline);
 
+    // ---- Wt::Http::Request: read-only view of an HTTP request ----
+    //
+    // Lifetime: valid only for the duration of WResource.handle_request.
+    // The wrapper points at a stack-local C++ Request on the Wt worker
+    // thread; do not store it past the call.
+
+    nb::class_<Wt::Http::Request>(m, "HttpRequest")
+        .def_prop_ro("method", &Wt::Http::Request::method,
+                     "HTTP method as a string ('GET', 'POST', 'PUT', ...).")
+        .def_prop_ro("path", &Wt::Http::Request::path,
+                     "The deploy path at which this request was received.")
+        .def_prop_ro("path_info", &Wt::Http::Request::pathInfo,
+                     "Additional path info beyond the deploy path.")
+        .def_prop_ro("query_string", &Wt::Http::Request::queryString)
+        .def_prop_ro("url_scheme", &Wt::Http::Request::urlScheme)
+        .def_prop_ro("content_type", &Wt::Http::Request::contentType)
+        .def_prop_ro("content_length", &Wt::Http::Request::contentLength)
+        .def_prop_ro("user_agent", &Wt::Http::Request::userAgent)
+        .def_prop_ro("client_address", &Wt::Http::Request::clientAddress)
+        .def_prop_ro("host_name", &Wt::Http::Request::hostName)
+        .def_prop_ro("server_name", &Wt::Http::Request::serverName)
+        .def_prop_ro("server_port", &Wt::Http::Request::serverPort)
+        .def("get_parameter",
+             [](const Wt::Http::Request& r, const std::string& name)
+                 -> std::optional<std::string> {
+                 const std::string* v = r.getParameter(name);
+                 if (!v) return std::nullopt;
+                 return *v;
+             },
+             "name"_a,
+             "First value for query/POST parameter `name`, or None.")
+        .def("get_parameter_values",
+             [](const Wt::Http::Request& r, const std::string& name) {
+                 return r.getParameterValues(name);
+             },
+             "name"_a,
+             "All values for a parameter (e.g. `?n=a&n=b` → ['a','b']).")
+        .def_prop_ro("parameters",
+             [](const Wt::Http::Request& r) {
+                 return r.getParameterMap();
+             },
+             "All query/POST parameters as a dict[str, list[str]].")
+        .def("header_value", &Wt::Http::Request::headerValue,
+             "field"_a,
+             "Header value (empty string if absent).")
+        .def("cookie_value",
+             [](const Wt::Http::Request& r, const std::string& name)
+                 -> std::optional<std::string> {
+                 const std::string* v = r.getCookieValue(name);
+                 if (!v) return std::nullopt;
+                 return *v;
+             },
+             "name"_a,
+             "Cookie value, or None if absent.")
+        .def_prop_ro("cookies",
+             [](const Wt::Http::Request& r) { return r.cookies(); },
+             "All cookies as a dict[str, str].")
+        .def("body",
+             [](const Wt::Http::Request& r) -> nb::bytes {
+                 std::istream& in = r.in();
+                 std::ostringstream oss;
+                 oss << in.rdbuf();
+                 std::string s = oss.str();
+                 return nb::bytes(s.data(), s.size());
+             },
+             "Read the entire request body as `bytes`. For "
+             "application/x-www-form-urlencoded or multipart/form-data Wt "
+             "has already consumed the stream and exposes the values via "
+             "`get_parameter` instead.");
+
+    // ---- Wt::Http::Response: write-only response handle ----
+    //
+    // Headers must be set BEFORE the first write() / set_mime_type;
+    // after that point Wt commits headers to the wire and addHeader
+    // becomes a no-op.
+
+    nb::class_<Wt::Http::Response>(m, "HttpResponse")
+        .def("set_status", &Wt::Http::Response::setStatus, "status"_a,
+             "Set the HTTP status code (default 200).")
+        .def("set_content_length",
+             [](Wt::Http::Response& r, std::uint64_t n) {
+                 r.setContentLength(n);
+             },
+             "length"_a)
+        .def("set_mime_type", &Wt::Http::Response::setMimeType,
+             "mime_type"_a,
+             "Set the Content-Type. After this (or any write) headers "
+             "are committed.")
+        .def("add_header", &Wt::Http::Response::addHeader,
+             "name"_a, "value"_a)
+        .def("insert_header", &Wt::Http::Response::insertHeader,
+             "name"_a, "value"_a,
+             "Set an HTTP header, replacing any earlier value with the "
+             "same name.")
+        .def("write",
+             [](Wt::Http::Response& r, nb::bytes data) {
+                 r.out().write(
+                     reinterpret_cast<const char*>(data.c_str()),
+                     static_cast<std::streamsize>(data.size()));
+             },
+             "data"_a,
+             "Write `bytes` to the response body.")
+        .def("write",
+             [](Wt::Http::Response& r, const std::string& data) {
+                 r.out().write(data.data(),
+                               static_cast<std::streamsize>(data.size()));
+             },
+             "data"_a,
+             "Write a `str` (UTF-8) to the response body.");
+
     // ---- WResource (abstract base) ----
     //
-    // Bound as a *non*-constructible class because handleRequest() is pure
-    // virtual; only the concrete subclasses (WMemoryResource, WFileResource)
-    // are instantiable from Python. Subclassing WResource in Python to
-    // override handleRequest would need a nanobind trampoline binding
-    // Wt::Http::Request / Response — not done here. For dynamic content,
-    // use WMemoryResource and re-call set_data() + set_changed().
+    // Concrete subclasses below: WMemoryResource and WFileResource ship
+    // their own handle_request. For a dynamic endpoint, use
+    // `wt.CallbackResource(callable)` (or wt.callback_resource) below —
+    // simpler and more Pythonic than subclassing.
 
     nb::class_<Wt::WResource, Wt::WObject>(m, "WResource")
         .def("suggest_file_name",
@@ -134,6 +298,30 @@ void register_resource(nb::module_& m) {
         .def_prop_rw("url",
             [](const Wt::WLink& l) { return l.url(); },
             [](Wt::WLink& l, const std::string& u) { l.setUrl(u); });
+
+    // ---- CallbackResource: dynamic HTTP endpoint backed by a callable ----
+    //
+    //     def handle(req: wt.HttpRequest, resp: wt.HttpResponse) -> None:
+    //         resp.set_mime_type("application/json")
+    //         resp.write(b'{"ok": true}')
+    //
+    //     server.add_resource(wt.CallbackResource(handle), "/api/whatever")
+    //
+    // The callable runs on a Wt worker thread; the binding acquires the
+    // GIL before invoking it. Request / Response wrappers are valid only
+    // for the duration of the call. Captured state in the callable
+    // (closures, dataclass attributes, anything) survives across
+    // invocations — the CallbackResource itself holds a strong ref.
+
+    nb::class_<CallbackResource, Wt::WResource>(m, "CallbackResource")
+        .def(nb::new_([](nb::callable cb) {
+                 return std::make_shared<CallbackResource>(std::move(cb));
+             }),
+             "callback"_a,
+             "Mount a Python callable as an HTTP endpoint. The callable "
+             "is invoked as `callback(request, response)` on every "
+             "request, with the GIL held. Exceptions are routed through "
+             "`PyErr_WriteUnraisable` rather than crashing Wt's worker.");
 }
 
 }  // namespace witty_for_python
