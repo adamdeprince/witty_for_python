@@ -64,6 +64,6 @@ Skipped while binding `ext/bind_modelview.cpp` and `ext/bind_modelview_proxy.cpp
 | `WAbstractSpinBox`, `WAbstractToggleButton` | Abstract bases; concrete subclasses (`WSpinBox`, `WDoubleSpinBox`, `WCheckBox`, `WRadioButton`) are bound. | trivial |
 | ~~`WQrCode`~~ | ✅ Bound. | done |
 | ~~`WGoogleMap`~~ | ✅ Bound (caveat: needs `google_api_key` config property at server startup). Note: `Coordinate.distance_to` returns kilometres, not metres as the Wt docs claim. | done |
-| `WLeafletMap` | Skipped: `addTileLayer` takes a `Wt::Json::Object` and the rich `AbstractMapItem`/`Marker`/`Popup` hierarchy. Binding it cleanly requires first binding `Wt::Json`. | ~250 |
+| ~~`WLeafletMap`~~ | ✅ Bound. Core widget surface + `add_tile_layer` (takes Json.Object). The rich `AbstractMapItem`/`Marker`/`Popup` hierarchy remains skipped — Python users wanting markers can add them via the underlying tile layer's JavaScript. | done |
 | `WFlashObject` | Deprecated browser tech. Not worth binding. | n/a |
 | Custom user types via nanobind trampolines | Python subclassing of `WPaintedWidget` / `WAbstractItemModel` / `WAbstractItemDelegate`. Currently each provides a callback-shim path instead. | per-class |

@@ -307,6 +307,17 @@ void register_signals(nb::module_& m) {
     // members of widgets. JSignal has no public default ctor anyway
     // (requires a parent WObject + a JS name).
 
+    // JSignal<int> — used by WLeafletMap.zoom_level_changed.
+    nb::class_<Wt::JSignal<int>>(m, "JIntSignal")
+        .def("connect",
+            [](Wt::JSignal<int>& s, nb::callable cb) {
+                return py_connect<Wt::JSignal<int>, int>(s, std::move(cb));
+            }, "callable"_a)
+        .def("disconnect_all_slots",
+            [](Wt::JSignal<int>& s) {
+                connection_registry_disconnect_all(&s);
+            });
+
     // JSignal<long long> — file-too-large carries the rejected upload's
     // size in bytes. Used by WFileUpload.file_too_large.
     nb::class_<Wt::JSignal<long long>>(m, "JInt64Signal")

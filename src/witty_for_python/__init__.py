@@ -17,6 +17,9 @@ from . import _witty_for_python as _ext
 # Re-export the chart submodule under its native name. nanobind put
 # the chart bindings into `_ext.chart`; expose as `witty_for_python.chart`.
 chart = _ext.chart
+# Re-export Wt::Json as `witty_for_python.Json` (uppercase to mirror Wt's
+# namespace; the lowercase `json` would shadow Python's stdlib module).
+Json = _ext.Json
 
 
 # Wt's static assets (themes, JS, CSS, icons) shipped alongside the extension.
@@ -59,8 +62,10 @@ from ._witty_for_python import (
     GoogleMapCoordinate,
     GoogleMapsVersion,
     GradientStyle,
+    LeafletMapCoordinate,
     JDoubleSignal,
     JInt64Signal,
+    JIntSignal,
     JSignal0,
     MediaEncoding,
     MediaPlayerButtonId,
@@ -223,6 +228,7 @@ from ._witty_for_python import (
     WGoogleMap,
     WGradient,
     WIcon,
+    WLeafletMap,
     WIconPair,
     WLength,
     WLoadingIndicator,
@@ -317,7 +323,10 @@ __all__ = [
     "ItemDataRole",
     "JDoubleSignal",
     "JInt64Signal",
+    "JIntSignal",
+    "Json",
     "JSignal0",
+    "LeafletMapCoordinate",
     "MediaEncoding",
     "MediaPlayerButtonId",
     "MediaPlayerProgressBarId",
@@ -464,6 +473,7 @@ __all__ = [
     "WFont",
     "WGoogleMap",
     "WGradient",
+    "WLeafletMap",
     "WLineF",
     "WLink",
     "WMenu",

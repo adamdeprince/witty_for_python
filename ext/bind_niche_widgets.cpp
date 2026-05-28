@@ -1,7 +1,9 @@
 #include "common.hpp"
 
+#include <Wt/Json/Object.h>
 #include <Wt/WBrush.h>
 #include <Wt/WGoogleMap.h>
+#include <Wt/WLeafletMap.h>
 #include <Wt/WPen.h>
 #include <Wt/WQrCode.h>
 
@@ -139,6 +141,71 @@ void register_niche_widgets(nb::module_& m) {
 
     // Re-attach the Coordinate value type as WGoogleMap.Coordinate.
     gmap_cls.attr("Coordinate") = coord_cls;
+
+    // ---- WLeafletMap ----
+    //
+    // OpenStreetMap-backed map widget. Unlike WGoogleMap, no external
+    // API key is required — the widget renders tiles fetched directly
+    // from an OpenStreetMap (or compatible) tile server, configured
+    // via add_tile_layer. The widget itself is just a styled container;
+    // tiles, markers, popups all come from the tile server / explicit
+    // calls.
+    //
+    // We bind the bare widget + add_tile_layer here. The rich
+    // AbstractMapItem / Marker / Popup hierarchy is more elaborate and
+    // remains deferred — see docs/deferred.md.
+
+    auto leaflet_coord_cls = nb::class_<Wt::WLeafletMap::Coordinate>(
+        m, "LeafletMapCoordinate")
+        .def(nb::init<>())
+        .def(nb::init<double, double>(), "latitude"_a, "longitude"_a)
+        .def_prop_rw("latitude",
+            &Wt::WLeafletMap::Coordinate::latitude,
+            &Wt::WLeafletMap::Coordinate::setLatitude)
+        .def_prop_rw("longitude",
+            &Wt::WLeafletMap::Coordinate::longitude,
+            &Wt::WLeafletMap::Coordinate::setLongitude)
+        .def("__repr__",
+            [](const Wt::WLeafletMap::Coordinate& c) {
+                return "LeafletMapCoordinate(lat=" + std::to_string(c.latitude())
+                     + ", lon=" + std::to_string(c.longitude()) + ")";
+            });
+
+    auto leaflet_cls = nb::class_<Wt::WLeafletMap, Wt::WWidget>(m, "WLeafletMap")
+        .def(nb::init<>())
+        .def(nb::init<const Wt::Json::Object&>(), "options"_a,
+             "Construct with Leaflet map options (e.g. centre, zoom). "
+             "Pass a Json.Object (or use the default ctor + set_options).")
+        .def("set_options",
+            // Overloaded with the marker classes; pick the no-prefix form.
+            nb::overload_cast<const Wt::Json::Object&>(
+                &Wt::WLeafletMap::setOptions),
+            "options"_a)
+        .def("add_tile_layer",
+            &Wt::WLeafletMap::addTileLayer,
+            "url_template"_a, "options"_a,
+            "Add a tile source. `url_template` is a Leaflet URL template "
+            "with {z}/{x}/{y} placeholders (e.g. "
+            "'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'). "
+            "`options` is a Json.Object holding Leaflet tile-layer "
+            "options (maxZoom, attribution, subdomains, …).")
+        .def("pan_to", &Wt::WLeafletMap::panTo, "center"_a)
+        .def_prop_rw("zoom_level",
+            &Wt::WLeafletMap::zoomLevel,
+            &Wt::WLeafletMap::setZoomLevel)
+        .def_prop_ro("position",
+            // Wt has both `position()` const and a setter-via-panTo on
+            // the widget; expose the read side as a property.
+            [](const Wt::WLeafletMap& m) {
+                return m.position();
+            })
+        .def_prop_ro("zoom_level_changed",
+            &Wt::WLeafletMap::zoomLevelChanged,
+            nb::rv_policy::reference_internal,
+            "JIntSignal — fires with the new zoom level when the user "
+            "scrolls or pinches.");
+
+    leaflet_cls.attr("Coordinate") = leaflet_coord_cls;
 }
 
 }  // namespace witty_for_python

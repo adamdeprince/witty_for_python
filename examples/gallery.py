@@ -788,6 +788,46 @@ def make_chrome_tab() -> wt.WContainerWidget:
     return c
 
 
+def make_leaflet_tab() -> wt.WContainerWidget:
+    """WLeafletMap fed an OpenStreetMap tile layer.
+
+    Demonstrates the wt.Json bridge: tile-layer options are built from
+    a Python dict + handed to add_tile_layer as a Json.Object. No API
+    key required — OpenStreetMap's public tiles are free for low-volume
+    use (the gallery, in this case).
+    """
+    c = wt.WContainerWidget()
+    c.add_widget("<h3>WLeafletMap (OpenStreetMap)</h3>")
+    c.add_widget(
+        "<p>An interactive Leaflet map fed an OpenStreetMap tile layer. "
+        "The tile-layer options are a Python dict, marshalled to "
+        "<code>wt.Json.Object</code> by the binding. "
+        "Drag to pan, scroll to zoom.</p>")
+
+    map_opts = wt.Json.Object({
+        "center": [40.7128, -74.0060],   # New York
+        "zoom": 11,
+    })
+    osm_opts = wt.Json.Object({
+        "maxZoom": 19,
+        "attribution":
+            '&copy; <a href="https://www.openstreetmap.org/copyright">'
+            'OpenStreetMap</a> contributors',
+    })
+
+    leaflet = c.add_widget(wt.WLeafletMap(map_opts))
+    leaflet.add_tile_layer(
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png", osm_opts)
+    leaflet.set_width(500)
+    leaflet.set_height(400)
+
+    log = c.add_widget(wt.WText("<i>zoom: 11</i>"))
+    def on_zoom_change(level: int) -> None:
+        log.text = f"zoom: <b>{level}</b>"
+    leaflet.zoom_level_changed.connect(on_zoom_change)
+    return c
+
+
 def make_niches_tab() -> wt.WContainerWidget:
     """Small niches: WQrCode + a WPaintedWidget demo with gradients/shadow.
 
@@ -1128,6 +1168,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     tabs.add_tab(make_painting_tab(), "Painting")
     tabs.add_tab(make_chart_tab(), "Charts")
     tabs.add_tab(make_niches_tab(), "Niches")
+    tabs.add_tab(make_leaflet_tab(), "Map")
     tabs.add_tab(make_timer_tab(), "Timer")
 
     # Apply Bootstrap5 theme so the gallery looks modern. The theme is owned
