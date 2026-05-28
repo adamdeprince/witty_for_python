@@ -2,6 +2,7 @@
 
 #include <Wt/WApplication.h>
 #include <Wt/WEnvironment.h>
+#include <Wt/WResource.h>
 #include <Wt/WServer.h>
 
 #include <functional>
@@ -62,6 +63,23 @@ void register_server(nb::module_& m) {
              "type"_a, "factory"_a,
              "path"_a = std::string("/"),
              "favicon"_a = std::string())
+        // Mount a WResource at a URL path. The resource serves the same
+        // bytes to every client; it has no session state. Useful for
+        // small HTTP endpoints alongside the widget UI (a `curl`able
+        // JSON state-dump, a generated PDF, etc.). nanobind's
+        // shared_ptr from_python wraps the Python wrapper so the
+        // resource lives as long as the server keeps it.
+        .def("add_resource",
+             [](Wt::WServer& self,
+                std::shared_ptr<Wt::WResource> resource,
+                const std::string& path) {
+                 self.addResource(resource, path);
+             },
+             "resource"_a, "path"_a,
+             "Mount `resource` at the given URL path on this server. "
+             "The path is process-wide (independent of any session). "
+             "Returns nothing; clients fetch via "
+             "`http://<server>/<path>`.")
         .def("start", &Wt::WServer::start)
         .def("stop", &Wt::WServer::stop)
         // run() blocks on the Wt event loop. Release the GIL so the Python

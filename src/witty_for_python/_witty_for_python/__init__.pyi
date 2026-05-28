@@ -5,7 +5,15 @@ import datetime
 import enum
 from typing import TypeVar, TypeAlias, overload
 
-_T = TypeVar("_T")
+_T_Area = TypeVar("_T_Area", bound=WAbstractArea)
+_T_Button = TypeVar("_T_Button", bound=WInteractWidget)
+_T_LineEdit = TypeVar("_T_LineEdit", bound=WLineEdit)
+_T_Marker = TypeVar("_T_Marker", bound=WLeafletMap.Marker)
+_T_Menu = TypeVar("_T_Menu", bound=WMenu)
+_T_MenuItem = TypeVar("_T_MenuItem", bound=WMenuItem)
+_T_Popup = TypeVar("_T_Popup", bound=WLeafletMap.Popup)
+_T_Tooltip = TypeVar("_T_Tooltip", bound=WLeafletMap.Tooltip)
+_T_Widget = TypeVar("_T_Widget", bound=WWidget)
 
 
 from . import Json as Json, chart as chart
@@ -750,13 +758,13 @@ class WContainerWidget(WInteractWidget):
     def add_widget(self, text: str) -> WText: ...
 
     @overload
-    def add_widget(self, widget: _T) -> _T: ...
+    def add_widget(self, widget: _T_Widget) -> _T_Widget: ...
 
     @overload
     def add_widgets(self, texts: Sequence[str]) -> list[WText]: ...
 
     @overload
-    def add_widgets(self, widgets: list[_T]) -> list[_T]: ...
+    def add_widgets(self, widgets: list[_T_Widget]) -> list[_T_Widget]: ...
 
     def clear(self) -> None: ...
 
@@ -767,7 +775,7 @@ class WContainerWidget(WInteractWidget):
 
     def remove_widget(self, widget: WWidget) -> WWidget: ...
 
-    def set_layout(self, layout: object) -> None: ...
+    def set_layout(self, layout: WLayout) -> None: ...
 
 class WText(WInteractWidget):
     @overload
@@ -917,7 +925,7 @@ class WLabel(WInteractWidget):
     @word_wrap.setter
     def word_wrap(self, arg: bool, /) -> None: ...
 
-    def set_image(self, image: object) -> None: ...
+    def set_image(self, image: WImage) -> None: ...
 
 class WBreak(WWidget):
     def __init__(self) -> None: ...
@@ -1373,7 +1381,7 @@ class WTemplate(WInteractWidget):
 
     def set_template_text(self, text: str, format: TextFormat = TextFormat.XHTML) -> None: ...
 
-    def bind_widget(self, var_name: str, widget: _T) -> _T: ...
+    def bind_widget(self, var_name: str, widget: _T_Widget) -> _T_Widget: ...
 
     def bind_string(self, var_name: str, value: str, format: TextFormat = TextFormat.XHTML) -> None: ...
 
@@ -1491,10 +1499,10 @@ class WMenu(WWidget):
     def add_item(self, label: str) -> WMenuItem: ...
 
     @overload
-    def add_item(self, item: _T) -> _T: ...
+    def add_item(self, item: _T_MenuItem) -> _T_MenuItem: ...
 
     @overload
-    def add_items(self, items: list[_T]) -> list[_T]: ...
+    def add_items(self, items: list[_T_MenuItem]) -> list[_T_MenuItem]: ...
 
     @overload
     def add_items(self, labels: Sequence[str]) -> None: ...
@@ -1565,7 +1573,7 @@ class WPanel(WWidget):
 
     def expand(self) -> None: ...
 
-    def set_central_widget(self, widget: object) -> None: ...
+    def set_central_widget(self, widget: WWidget) -> None: ...
 
 class WGroupBox(WContainerWidget):
     @overload
@@ -1714,9 +1722,9 @@ class LayoutDirection(enum.Enum):
 class WBoxLayout(WLayout):
     def __init__(self, direction: LayoutDirection) -> None: ...
 
-    def add_widget(self, widget: _T, stretch: int = 0) -> _T: ...
+    def add_widget(self, widget: _T_Widget, stretch: int = 0) -> _T_Widget: ...
 
-    def add_widgets(self, widgets: list[_T]) -> list[_T]: ...
+    def add_widgets(self, widgets: list[_T_Widget]) -> list[_T_Widget]: ...
 
     def add_stretch(self, stretch: int = 1) -> None: ...
 
@@ -1731,7 +1739,7 @@ class WVBoxLayout(WBoxLayout):
 class WGridLayout(WLayout):
     def __init__(self) -> None: ...
 
-    def add_widget(self, widget: _T, row: int, column: int, row_span: int = 1, column_span: int = 1) -> _T: ...
+    def add_widget(self, widget: _T_Widget, row: int, column: int, row_span: int = 1, column_span: int = 1) -> _T_Widget: ...
 
     def set_row_stretch(self, row: int, stretch: int) -> None: ...
 
@@ -2141,12 +2149,12 @@ class WStandardItem:
 
     def set_column_count(self, columns: int) -> None: ...
 
-    def append_row(self, items: list) -> None:
+    def append_row(self, items: list[WStandardItem]) -> None:
         """
         Append a single child row. Each item's Python wrapper stays usable after the call (re-armed as a non-owning alias).
         """
 
-    def append_column(self, items: list) -> None: ...
+    def append_column(self, items: list[WStandardItem]) -> None: ...
 
     def insert_rows(self, row: int, count: int) -> None: ...
 
@@ -2181,14 +2189,14 @@ class WStandardItemModel(WAbstractItemModel):
     def item(self, row: int, column: int = 0) -> WStandardItem:
         """Top-level item at (row, column)."""
 
-    def set_item(self, row: int, column: int, item: object) -> None:
+    def set_item(self, row: int, column: int, item: WStandardItem) -> None:
         """
         Place an item at (row, column). Transfers ownership; the Python wrapper is re-armed as a non-owning alias.
         """
 
-    def append_row(self, items: list) -> None: ...
+    def append_row(self, items: list[WStandardItem]) -> None: ...
 
-    def append_column(self, items: list) -> None: ...
+    def append_column(self, items: list[WStandardItem]) -> None: ...
 
 class SelectionBehavior(enum.Enum):
     SelectItems = 0
@@ -2746,12 +2754,12 @@ class LayoutPosition(enum.Enum):
 class WBorderLayout(WLayout):
     def __init__(self) -> None: ...
 
-    def add_widget(self, widget: _T, position: LayoutPosition) -> _T: ...
+    def add_widget(self, widget: _T_Widget, position: LayoutPosition) -> _T_Widget: ...
 
 class WFitLayout(WLayout):
     def __init__(self) -> None: ...
 
-    def add_widget(self, widget: _T) -> _T:
+    def add_widget(self, widget: _T_Widget) -> _T_Widget:
         """
         Set the single fitted child. Replacing it requires calling the inherited removeWidget on the previous one first.
         """
@@ -2781,7 +2789,7 @@ class WAbstractMedia(WInteractWidget):
 
     def clear_sources(self) -> None: ...
 
-    def set_alternative_content(self, widget: object) -> None:
+    def set_alternative_content(self, widget: WWidget) -> None:
         """
         Widget shown to users whose browser can't play any of the configured sources. Ownership transfers; the wrapper is re-armed as a non-owning alias.
         """
@@ -3588,12 +3596,12 @@ class WPaintedWidget(WInteractWidget):
     @property
     def preferred_method(self) -> RenderMethod: ...
 
-    def add_area(self, area: _T) -> _T:
+    def add_area(self, area: _T_Area) -> _T_Area:
         """
         Attach an image-map area (WRectArea / WCircleArea / WPolygonArea) that becomes a clickable region on top of the painted output.
         """
 
-    def insert_area(self, index: int, area: _T) -> _T: ...
+    def insert_area(self, index: int, area: _T_Area) -> _T_Area: ...
 
 class RenderMethod(enum.Enum):
     InlineSvgVml = 0
@@ -3915,7 +3923,7 @@ class WLeafletMapAbstractOverlayItem(WLeafletMapAbstractMapItem):
         Leaflet-side options for this overlay (autoClose, closeOnClick, etc.). See https://leafletjs.com/reference.html for the full list.
         """
 
-    def set_content(self, content: object) -> None:
+    def set_content(self, content: WWidget) -> None:
         """
         Replace the overlay's content with a widget. Ownership transfers; the Python wrapper is re-armed as a non-owning alias.
         """
@@ -3971,7 +3979,7 @@ class WLeafletMapTooltip(WLeafletMapAbstractOverlayItem):
     def __init__(self, pos: LeafletMapCoordinate, content: WWidget) -> None: ...
 
 class WLeafletMapMarker(WLeafletMapAbstractMapItem):
-    def add_popup(self, popup: _T) -> _T:
+    def add_popup(self, popup: _T_Popup) -> _T_Popup:
         """
         Attach a popup that opens when the marker is clicked. Replaces any previously-added popup on this marker.
         """
@@ -3982,7 +3990,7 @@ class WLeafletMapMarker(WLeafletMapAbstractMapItem):
     def popup(self) -> WLeafletMapPopup:
         """Current popup, or None if none is attached."""
 
-    def add_tooltip(self, tooltip: _T) -> _T:
+    def add_tooltip(self, tooltip: _T_Tooltip) -> _T_Tooltip:
         """
         Attach a tooltip that appears on hover. Replaces any previously-added tooltip.
         """
@@ -4049,17 +4057,17 @@ class WLeafletMap(WWidget):
         JIntSignal — fires with the new zoom level when the user scrolls or pinches.
         """
 
-    def add_marker(self, marker: _T) -> _T:
+    def add_marker(self, marker: _T_Marker) -> _T_Marker:
         """
         Attach a Marker (LeafletMarker or WidgetMarker) to the map. Ownership transfers; the wrapper is re-armed as a non-owning alias, so chains like `m.add_marker(mkr).add_popup(p)` work.
         """
 
-    def add_popup(self, popup: _T) -> _T:
+    def add_popup(self, popup: _T_Popup) -> _T_Popup:
         """
         Attach a standalone Popup to the map (separate from any marker). The popup opens at its configured coordinate.
         """
 
-    def add_tooltip(self, tooltip: _T) -> _T: ...
+    def add_tooltip(self, tooltip: _T_Tooltip) -> _T_Tooltip: ...
 
     Coordinate: TypeAlias = LeafletMapCoordinate
 
@@ -4748,9 +4756,9 @@ class WToolBar(WWidget):
     def count(self) -> int:
         """Number of items (buttons or widgets) currently in the toolbar."""
 
-    def add_button(self, button: _T, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T: ...
+    def add_button(self, button: _T_Button, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T_Button: ...
 
-    def add_widget(self, widget: _T, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T: ...
+    def add_widget(self, widget: _T_Widget, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T_Widget: ...
 
     def add_separator(self) -> None:
         """Add a visual divider between groups of items."""
@@ -4772,7 +4780,7 @@ class WSplitButton(WWidget):
         The chevron (right) button — clicking it opens the attached WPopupMenu.
         """
 
-    def set_menu(self, menu: object) -> None:
+    def set_menu(self, menu: WPopupMenu) -> None:
         """
         Attach a WPopupMenu as the dropdown. Ownership transfers to the split button; the Python wrapper becomes a non-owning alias of the menu the split button now holds.
         """
@@ -4790,13 +4798,13 @@ class WNavigationBar(WTemplate):
         When True, collapses the contents into a hamburger menu on narrow viewports (Bootstrap responsive behaviour). Wt has no getter for this — the flag is write-only on the C++ side.
         """
 
-    def add_menu(self, menu: _T, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T: ...
+    def add_menu(self, menu: _T_Menu, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T_Menu: ...
 
-    def add_form_field(self, widget: _T, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T:
+    def add_form_field(self, widget: _T_Widget, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T_Widget:
         """
         Embed a form field (e.g. a small WLineEdit for a search bar). Distinct from the standalone add_search variant only in styling.
         """
 
-    def add_search(self, field: _T, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T: ...
+    def add_search(self, field: _T_LineEdit, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T_LineEdit: ...
 
-    def add_widget(self, widget: _T, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T: ...
+    def add_widget(self, widget: _T_Widget, alignment: AlignmentFlag = AlignmentFlag.Left) -> _T_Widget: ...

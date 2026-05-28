@@ -1276,6 +1276,18 @@ def main(argv: list[str]) -> int:
                for a in argv[1:]):
         argv = argv + ["--resources-dir", wt.resources_dir]
 
+    # WLeafletMap needs its JS/CSS URLs set as Wt configuration properties.
+    # We bake them in via a tempfile config so the Map tab works without
+    # the user having to author a wt_config.xml. Without these, the
+    # WLeafletMap constructor raises RuntimeError and the tab falls back
+    # to a placeholder (see make_leaflet_tab caller below).
+    if not any(a == "--config" or a.startswith("--config=") for a in argv[1:]):
+        argv = wt.with_config_properties(
+            argv,
+            leafletJSURL="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js",
+            leafletCSSURL="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css",
+        )
+
     server = wt.WServer()
     server.set_server_configuration(argv)
     server.add_entry_point(wt.EntryPointType.Application, create_app)

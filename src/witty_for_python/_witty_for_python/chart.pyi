@@ -5,7 +5,7 @@ Wt's chart subsystem — WCartesianChart, WPieChart, WAxis, WDataSeries, and the
 import enum
 from typing import TypeVar, overload
 
-_T = TypeVar("_T")
+_T_Series = TypeVar("_T_Series", bound=chart.WDataSeries)
 
 
 import witty_for_python._witty_for_python
@@ -241,7 +241,7 @@ class WCartesianChart(WAbstractChart):
 
     def set_legend_location(self, side: LegendLocation, alignment: "Wt::Side", location: witty_for_python._witty_for_python.AlignmentFlag) -> None: ...
 
-    def add_series(self, series: _T) -> _T: ...
+    def add_series(self, series: _T_Series) -> _T_Series: ...
 
     @property
     def x_series_column(self) -> int:

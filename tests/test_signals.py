@@ -173,6 +173,12 @@ def test_slot_exception_does_not_crash_dispatcher() -> None:
     assert isinstance(captured[0].exc_value, RuntimeError)
     assert "bang on 42" in str(captured[0].exc_value)
 
+    # The captured unraisable object holds the exception's traceback, which
+    # holds this frame's locals (including `sig`). Drop the capture so the
+    # IntSignal instance can be GC'd cleanly at the end of the test —
+    # otherwise nanobind reports it as a leaked instance at module finalize.
+    captured.clear()
+
 
 # ---- connection registry ----------------------------------------------------
 

@@ -294,6 +294,77 @@ def _cleanup_signal_slots() -> None:
 _atexit.register(_cleanup_signal_slots)
 
 
+def write_config_xml(path: str | _Path, **properties: str) -> str:
+    """Write a minimal Wt configuration XML to ``path`` with the given properties.
+
+    Wt reads configuration properties from ``wt_config.xml``. Some widgets
+    require specific properties to function — ``WLeafletMap`` needs
+    ``leafletJSURL`` and ``leafletCSSURL``, ``WGoogleMap`` needs
+    ``google_api_key``. Pass them as keyword arguments here:
+
+        cfg = wt.write_config_xml(
+            "/tmp/wt_config.xml",
+            leafletJSURL="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js",
+            leafletCSSURL="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css",
+        )
+        argv = sys.argv + ["--config", cfg]
+        server.set_server_configuration(argv)
+
+    Returns the string form of ``path`` for convenience.
+    """
+    from xml.sax.saxutils import escape
+
+    body = "\n".join(
+        f'            <property name="{escape(k)}">{escape(v)}</property>'
+        for k, v in properties.items()
+    )
+    xml = (
+        '<server>\n'
+        '    <application-settings location="*">\n'
+        '        <properties>\n'
+        f'{body}\n'
+        '        </properties>\n'
+        '    </application-settings>\n'
+        '</server>\n'
+    )
+    p = _Path(path)
+    p.write_text(xml, encoding="utf-8")
+    return str(p)
+
+
+def with_config_properties(argv: list[str], **properties: str) -> list[str]:
+    """Augment ``argv`` with ``--config <tempfile>`` setting ``properties``.
+
+    Convenience wrapper around :func:`write_config_xml` that writes the XML
+    to a tempfile (auto-deleted via :mod:`atexit`) and appends the
+    ``--config`` flag. Useful from a ``main()`` that needs to set a few
+    Wt configuration properties without authoring a wt_config.xml by hand:
+
+        argv = wt.with_config_properties(
+            sys.argv,
+            leafletJSURL="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js",
+            leafletCSSURL="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css",
+        )
+        server = wt.WServer()
+        server.set_server_configuration(argv)
+        ...
+
+    Re-applying ``with_config_properties`` to argv that already carries a
+    ``--config`` flag does not strip the earlier one; pass the original
+    ``sys.argv`` (or build the property list once) to avoid double-config.
+    """
+    import os as _os
+    import tempfile as _tempfile
+
+    fd, path = _tempfile.mkstemp(suffix=".xml", prefix="witty_wt_config_")
+    _os.close(fd)
+    write_config_xml(path, **properties)
+    _atexit.register(
+        lambda p=path: _os.path.exists(p) and _os.unlink(p)
+    )
+    return list(argv) + ["--config", path]
+
+
 @_contextlib.contextmanager
 def update_lock(application: WApplication) -> _Iterator[bool]:
     """Take ``application``'s update lock for the duration of the ``with`` block.
@@ -545,4 +616,6 @@ __all__ = [
     "__version__",
     "resources_dir",
     "update_lock",
+    "with_config_properties",
+    "write_config_xml",
 ]

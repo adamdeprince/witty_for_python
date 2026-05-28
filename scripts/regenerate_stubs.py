@@ -32,6 +32,58 @@ REPO = Path(__file__).resolve().parent.parent
 PKG_DIR = REPO / "src" / "witty_for_python"
 
 
+# Bounded TypeVars per method name. Each tuple is
+# (TypeVar identifier, bound type). Methods not listed fall back to the
+# unbounded `_T`. Bounds are chosen from the Wt class hierarchy: the type
+# that's load-bearing in the matching `nb::cast<unique_ptr<X>>` call site
+# in ext/bind_*.cpp. Errant inputs still raise at the C++ cast — the
+# bound just lets the type-checker reject them before the call.
+_METHOD_BOUNDS: dict[str, tuple[str, str]] = {
+    # widget-tree methods → WWidget
+    "add_widget":               ("_T_Widget", "WWidget"),
+    "add_widgets":              ("_T_Widget", "WWidget"),
+    "add_tab":                  ("_T_Widget", "WWidget"),
+    "bind_widget":              ("_T_Widget", "WWidget"),
+    "set_central_widget":       ("_T_Widget", "WWidget"),
+    "set_alternative_content":  ("_T_Widget", "WWidget"),
+    "set_content":              ("_T_Widget", "WWidget"),
+    "add_form_field":           ("_T_Widget", "WWidget"),
+    # toolbar buttons accept either WPushButton or WSplitButton — bound
+    # at the closest common ancestor we expose, WInteractWidget.
+    "add_button":               ("_T_Button", "WInteractWidget"),
+    # menu / menu items
+    "add_item":                 ("_T_MenuItem", "WMenuItem"),
+    "add_items":                ("_T_MenuItem", "WMenuItem"),
+    "add_menu":                 ("_T_Menu", "WMenu"),
+    "set_menu":                 ("_T_PopupMenu", "WPopupMenu"),
+    # layout
+    "set_layout":               ("_T_Layout", "WLayout"),
+    # chart
+    "add_series":               ("_T_Series", "chart.WDataSeries"),
+    # standard item model
+    "set_item":                 ("_T_StandardItem", "WStandardItem"),
+    "append_row":               ("_T_StandardItem", "WStandardItem"),
+    "append_column":            ("_T_StandardItem", "WStandardItem"),
+    # image-map areas on WPaintedWidget
+    "add_area":                 ("_T_Area", "WAbstractArea"),
+    "insert_area":              ("_T_Area", "WAbstractArea"),
+    # leaflet overlays
+    "add_marker":               ("_T_Marker", "WLeafletMap.Marker"),
+    "add_popup":                ("_T_Popup", "WLeafletMap.Popup"),
+    "add_tooltip":              ("_T_Tooltip", "WLeafletMap.Tooltip"),
+    # specific setters
+    "add_search":               ("_T_LineEdit", "WLineEdit"),
+    "set_image":                ("_T_Image", "WImage"),
+}
+
+
+def _typevar_for(method: str) -> tuple[str, str | None]:
+    """Return (typevar_name, bound_class_name_or_None) for the method."""
+    if method in _METHOD_BOUNDS:
+        return _METHOD_BOUNDS[method]
+    return ("_T", None)
+
+
 # Match `(self, [prefix args,] NAME: object [, suffix args]) -> object: ...`.
 # The fluent argument can be the first OR appear after other positional
 # args (e.g. `bind_widget(self, var_name: str, widget: object) -> object`).
@@ -52,66 +104,147 @@ _FLUENT_LIST_SIG_RE = re.compile(
     r"(?P<after>(?:, [^)]+)?)\) -> list:"
 )
 
+# Match setters with `None` return: `(self, …, NAME: object, …) -> None`.
+# These don't need a TypeVar (nothing to echo) but their `object` input can
+# be tightened to a concrete bound so type-checkers reject obvious misuse.
+_SETTER_SIG_RE = re.compile(
+    r"def (?P<method>\w+)\(self"
+    r"(?P<before>(?:, \w+: [^,)]+)*?)"
+    r", (?P<argname>\w+): object"
+    r"(?P<after>(?:, [^)]+)?)\) -> None:"
+)
+
+# Bulk setter variant: `(self, …, NAME: list, …) -> None` →
+# `list[Bound]` if the method has a bound.
+_SETTER_LIST_SIG_RE = re.compile(
+    r"def (?P<method>\w+)\(self"
+    r"(?P<before>(?:, \w+: [^,)]+)*?)"
+    r", (?P<argname>\w+): list"
+    r"(?P<after>(?:, [^)]+)?)\) -> None:"
+)
+
+
+def _sub_single(m: "re.Match[str]") -> str:
+    method = m.group("method")
+    tv, _ = _typevar_for(method)
+    return (
+        f"def {method}(self{m.group('before')}, "
+        f"{m.group('argname')}: {tv}{m.group('after')}) -> {tv}:"
+    )
+
+
+def _sub_list(m: "re.Match[str]") -> str:
+    method = m.group("method")
+    tv, _ = _typevar_for(method)
+    return (
+        f"def {method}(self{m.group('before')}, "
+        f"{m.group('argname')}: list[{tv}]{m.group('after')}) "
+        f"-> list[{tv}]:"
+    )
+
+
+def _sub_setter(m: "re.Match[str]") -> str:
+    """For void-returning setters: tighten `object` to the method's bound
+    if it has one. No TypeVar needed."""
+    method = m.group("method")
+    _, bound = _typevar_for(method)
+    if bound is None:
+        # No bound known — leave the signature alone rather than guessing.
+        return m.group(0)
+    return (
+        f"def {method}(self{m.group('before')}, "
+        f"{m.group('argname')}: {bound}{m.group('after')}) -> None:"
+    )
+
+
+def _sub_setter_list(m: "re.Match[str]") -> str:
+    method = m.group("method")
+    _, bound = _typevar_for(method)
+    if bound is None:
+        return m.group(0)
+    return (
+        f"def {method}(self{m.group('before')}, "
+        f"{m.group('argname')}: list[{bound}]{m.group('after')}) -> None:"
+    )
+
 
 def _rewrite_fluent_typevars(stub_path: Path) -> None:
-    """Rewrite `(self, x: object) -> object` to `(self, x: _T) -> _T`.
-
-    `_T` is unbounded — nanobind's runtime check rejects anything that
-    isn't a heap-allocated bound class on the first `nb::cast<unique_ptr>`
-    line. The type-checker just needs to see "input type echoes back."
-    Also handles the bulk `(self, xs: list) -> list` form, lifted to
-    `list[_T] -> list[_T]`.
+    """Rewrite `(self, x: object) -> object` to `(self, x: _T_X) -> _T_X`
+    where `_T_X` is method-specific and bounded by the natural input
+    type. Methods not in `_METHOD_BOUNDS` use the unbounded `_T`.
+    Bulk `(self, xs: list) -> list` becomes `list[_T_X] -> list[_T_X]`.
     """
     text = stub_path.read_text(encoding="utf-8")
-    n_subs_single = len(_FLUENT_SIG_RE.findall(text))
-    n_subs_list = len(_FLUENT_LIST_SIG_RE.findall(text))
-    if n_subs_single + n_subs_list == 0:
+    single_matches = list(_FLUENT_SIG_RE.finditer(text))
+    list_matches = list(_FLUENT_LIST_SIG_RE.finditer(text))
+    setter_matches = [
+        m for m in _SETTER_SIG_RE.finditer(text)
+        if _typevar_for(m.group("method"))[1] is not None
+    ]
+    setter_list_matches = [
+        m for m in _SETTER_LIST_SIG_RE.finditer(text)
+        if _typevar_for(m.group("method"))[1] is not None
+    ]
+    if not (single_matches or list_matches
+            or setter_matches or setter_list_matches):
         return
 
-    text = _FLUENT_SIG_RE.sub(
-        r"def \g<method>(self\g<before>, \g<argname>: _T\g<after>) -> _T:",
-        text,
-    )
-    text = _FLUENT_LIST_SIG_RE.sub(
-        r"def \g<method>(self\g<before>, \g<argname>: list[_T]\g<after>) -> list[_T]:",
-        text,
-    )
+    text = _FLUENT_SIG_RE.sub(_sub_single, text)
+    text = _FLUENT_LIST_SIG_RE.sub(_sub_list, text)
+    text = _SETTER_SIG_RE.sub(_sub_setter, text)
+    text = _SETTER_LIST_SIG_RE.sub(_sub_setter_list, text)
 
-    # Inject `_T = TypeVar("_T")` after the existing `from typing import …`
-    # (or near the top if there's no typing import). Idempotent — bail if
-    # we've already injected.
-    if "_T = TypeVar" in text:
+    # Determine which TypeVars actually appear in the rewritten body. Only
+    # the fluent (return-echoing) matches contribute — setters with a
+    # known bound get the bound directly (no TypeVar).
+    used: set[str] = set()
+    for m in single_matches + list_matches:
+        tv, _ = _typevar_for(m.group("method"))
+        used.add(tv)
+    if not used:
+        # All matches were setter-only; no TypeVars needed.
+        stub_path.write_text(text, encoding="utf-8")
         return
 
-    typevar_decl = '_T = TypeVar("_T")\n'
+    # Build `_T_X = TypeVar("_T_X", bound=Foo)` declarations. Methods
+    # without an entry in _METHOD_BOUNDS fall through to unbounded `_T`.
+    decls: list[str] = []
+    for tv in sorted(used):
+        # find the bound (if any) — pick from the first method that uses
+        # this tv
+        bound: str | None = None
+        for name, (mtv, mbnd) in _METHOD_BOUNDS.items():
+            if mtv == tv:
+                bound = mbnd
+                break
+        if bound is not None:
+            decls.append(f'{tv} = TypeVar("{tv}", bound={bound})')
+        else:
+            decls.append(f'{tv} = TypeVar("{tv}")')
+
+    # Idempotent: skip if any of the decls are already there.
+    if any(decl in text for decl in decls):
+        return
+    decl_block = "\n".join(decls) + "\n"
+
+    # Inject after the existing `from typing import …` block (or add one).
     typing_import = re.search(
         r"^from typing import \(?([^()\n]+(?:\n[^()\n]+)*)\)?$",
         text, re.MULTILINE,
     )
     if typing_import:
-        # Append TypeVar to the existing import if not present, then
-        # add the declaration after the import block.
         if "TypeVar" not in typing_import.group(1):
             text = (
                 text[:typing_import.start()]
-                + "from typing import TypeVar, " + typing_import.group(1).lstrip()
+                + "from typing import TypeVar, "
+                + typing_import.group(1).lstrip()
                 + text[typing_import.end():]
             )
-        else:
-            # TypeVar already imported — leave the import line alone.
-            pass
-        # Insert the _T decl after the import block.
-        m = re.search(r"^from typing import .*?$", text, re.MULTILINE)
-        assert m is not None
-        text = text[:m.end()] + "\n\n" + typevar_decl + text[m.end():]
+        m_after = re.search(r"^from typing import .*?$", text, re.MULTILINE)
+        assert m_after is not None
+        text = text[:m_after.end()] + "\n\n" + decl_block + text[m_after.end():]
     else:
-        # No typing import — add one near the top, after any module docstring
-        # or existing imports.
-        text = (
-            "from typing import TypeVar\n\n"
-            + typevar_decl + "\n"
-            + text
-        )
+        text = "from typing import TypeVar\n\n" + decl_block + "\n" + text
 
     stub_path.write_text(text, encoding="utf-8")
 
