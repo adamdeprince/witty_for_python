@@ -254,8 +254,9 @@ void register_modelview(nb::module_& m) {
     // ---- WStringListModel: a flat list of strings ----
 
     nb::class_<Wt::WStringListModel, Wt::WAbstractListModel>(m, "WStringListModel")
-        .def(nb::init<>())
-        .def(nb::init<const std::vector<Wt::WString>&>(), "strings"_a)
+        .def(heap_init<Wt::WStringListModel>())
+        .def(heap_init<Wt::WStringListModel,
+                       const std::vector<Wt::WString>&>(), "strings"_a)
         .def("set_string_list", &Wt::WStringListModel::setStringList,
              "strings"_a)
         .def("add_string", &Wt::WStringListModel::addString, "string"_a)
@@ -272,8 +273,8 @@ void register_modelview(nb::module_& m) {
     // around the moved-in item becomes non-owning.
 
     nb::class_<Wt::WStandardItem>(m, "WStandardItem")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WStandardItem>())
+        .def(heap_init<Wt::WStandardItem, const Wt::WString&>(), "text"_a)
         .def_prop_rw("text",
             [](const Wt::WStandardItem& self) { return self.text(); },
             [](Wt::WStandardItem& self, const Wt::WString& t) { self.setText(t); })
@@ -350,8 +351,8 @@ void register_modelview(nb::module_& m) {
 
     nb::class_<Wt::WStandardItemModel, Wt::WAbstractItemModel>(
         m, "WStandardItemModel")
-        .def(nb::init<>())
-        .def(nb::init<int, int>(), "rows"_a, "columns"_a)
+        .def(heap_init<Wt::WStandardItemModel>())
+        .def(heap_init<Wt::WStandardItemModel, int, int>(), "rows"_a, "columns"_a)
         .def("clear", &Wt::WStandardItemModel::clear,
             "Drop every item; rowCount and columnCount go to 0.")
         .def_prop_ro("invisible_root_item",
@@ -473,7 +474,7 @@ void register_modelview(nb::module_& m) {
     // ---- WTableView ----
 
     nb::class_<Wt::WTableView, Wt::WAbstractItemView>(m, "WTableView")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WTableView>())
         .def("scroll_to",
              nb::overload_cast<const Wt::WModelIndex&, Wt::ScrollHint>(
                  &Wt::WTableView::scrollTo),
@@ -482,7 +483,7 @@ void register_modelview(nb::module_& m) {
     // ---- WTreeView ----
 
     nb::class_<Wt::WTreeView, Wt::WAbstractItemView>(m, "WTreeView")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WTreeView>())
         .def("set_expanded", &Wt::WTreeView::setExpanded,
              "index"_a, "expanded"_a)
         .def("is_expanded", &Wt::WTreeView::isExpanded, "index"_a)

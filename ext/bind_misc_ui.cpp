@@ -40,8 +40,8 @@ void register_misc_ui(nb::module_& m) {
     // Font Awesome stylesheet (loaded on first use via `load_icon_font`).
 
     nb::class_<Wt::WIcon, Wt::WInteractWidget>(m, "WIcon")
-        .def(nb::init<>())
-        .def(nb::init<const std::string&>(), "name"_a,
+        .def(heap_init<Wt::WIcon>())
+        .def(heap_init<Wt::WIcon, const std::string&>(), "name"_a,
              "Construct with a Font Awesome icon name (e.g. 'play', 'gear').")
         .def_prop_rw("name",
             [](const Wt::WIcon& self) { return self.name(); },
@@ -63,7 +63,7 @@ void register_misc_ui(nb::module_& m) {
         .value("IconName", Wt::WIconPair::IconType::IconName);
 
     nb::class_<Wt::WIconPair, Wt::WWidget>(m, "WIconPair")
-        .def(nb::init<const std::string&, const std::string&, bool>(),
+        .def(heap_init<Wt::WIconPair, const std::string&, const std::string&, bool>(),
              "icon1"_a, "icon2"_a, "click_is_switch"_a = true,
              "Two icon strings (URLs or Font-Awesome names). When "
              "`click_is_switch` is True (default), clicking either icon "
@@ -97,11 +97,11 @@ void register_misc_ui(nb::module_& m) {
     // WCompositeWidget descendants.
 
     nb::class_<Wt::WPopupWidget, Wt::WWidget>(m, "WPopupWidget")
-        .def("__init__",
-            [](Wt::WPopupWidget* self,
-               std::unique_ptr<Wt::WWidget> contents) {
-                new (self) Wt::WPopupWidget(std::move(contents));
-            },
+        .def(nb::new_(
+                [](std::unique_ptr<Wt::WWidget> contents) {
+                    return std::make_unique<Wt::WPopupWidget>(
+                        std::move(contents));
+                }),
             "contents"_a,
             "Construct with the inner widget shown in the popup. Ownership "
             "transfers; the contents widget's Python wrapper becomes non-"
@@ -144,13 +144,13 @@ void register_misc_ui(nb::module_& m) {
 
     nb::class_<Wt::WDefaultLoadingIndicator, Wt::WLoadingIndicator>(
         m, "WDefaultLoadingIndicator")
-        .def(nb::init<>(),
+        .def(heap_init<Wt::WDefaultLoadingIndicator>(),
              "Wt's plain-text loading indicator: a small fixed-position "
              "text label.");
 
     nb::class_<Wt::WOverlayLoadingIndicator, Wt::WLoadingIndicator>(
         m, "WOverlayLoadingIndicator")
-        .def(nb::init<>(),
+        .def(heap_init<Wt::WOverlayLoadingIndicator>(),
              "A more visible loading indicator — dims the page contents "
              "with a translucent overlay during requests.");
 
@@ -166,7 +166,7 @@ void register_misc_ui(nb::module_& m) {
         .value("Denied",  Wt::WNotification::Permission::Denied);
 
     nb::class_<Wt::WNotification, Wt::WObject>(m, "WNotification")
-        .def(nb::init<const Wt::WString&, const Wt::WString&>(),
+        .def(heap_init<Wt::WNotification, const Wt::WString&, const Wt::WString&>(),
              "title"_a = Wt::WString(), "body"_a = Wt::WString())
         .def("set_title", &Wt::WNotification::setTitle, "title"_a)
         .def("set_body", &Wt::WNotification::setBody, "body"_a)

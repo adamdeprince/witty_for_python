@@ -23,7 +23,7 @@ void register_timer(nb::module_& m) {
     // detail of how EventSignal is templated. Slots can ignore the argument.
 
     nb::class_<Wt::WTimer, Wt::WObject>(m, "WTimer")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WTimer>())
         .def_prop_rw("interval",
             [](const Wt::WTimer& t) { return t.interval(); },
             [](Wt::WTimer& t, std::chrono::milliseconds v) { t.setInterval(v); },

@@ -36,7 +36,7 @@ void register_datetime(nb::module_& m) {
     // ---- WDateEdit (inherits WLineEdit) ----
 
     nb::class_<Wt::WDateEdit, Wt::WLineEdit>(m, "WDateEdit")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WDateEdit>())
         .def_prop_rw("date",
             [](const Wt::WDateEdit& w) { return w.date(); },
             [](Wt::WDateEdit& w, const Wt::WDate& d) { w.setDate(d); })
@@ -52,7 +52,7 @@ void register_datetime(nb::module_& m) {
     // ---- WTimeEdit (inherits WLineEdit) ----
 
     nb::class_<Wt::WTimeEdit, Wt::WLineEdit>(m, "WTimeEdit")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WTimeEdit>())
         .def_prop_rw("time",
             [](const Wt::WTimeEdit& w) { return w.time(); },
             [](Wt::WTimeEdit& w, const Wt::WTime& t) { w.setTime(t); })
@@ -67,7 +67,7 @@ void register_datetime(nb::module_& m) {
     // ---- WCalendar (inherits WCompositeWidget → WWidget) ----
 
     nb::class_<Wt::WCalendar, Wt::WWidget>(m, "WCalendar")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WCalendar>())
         // select() is overloaded — we expose only the single-date form;
         // multi-select use cases are rare and the std::set<WDate> form
         // can come back later if needed.
@@ -98,10 +98,10 @@ void register_datetime(nb::module_& m) {
     // ---- WDateValidator (inherits WValidator) ----
 
     nb::class_<Wt::WDateValidator, Wt::WValidator>(m, "WDateValidator")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WDate&, const Wt::WDate&>(),
+        .def(heap_init<Wt::WDateValidator>())
+        .def(heap_init<Wt::WDateValidator, const Wt::WDate&, const Wt::WDate&>(),
              "bottom"_a, "top"_a)
-        .def(nb::init<const Wt::WString&>(), "format"_a)
+        .def(heap_init<Wt::WDateValidator, const Wt::WString&>(), "format"_a)
         .def_prop_rw("bottom",
             [](const Wt::WDateValidator& v) { return v.bottom(); },
             [](Wt::WDateValidator& v, const Wt::WDate& d) { v.setBottom(d); })

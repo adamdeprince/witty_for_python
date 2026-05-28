@@ -54,7 +54,7 @@ void register_modelview_proxy(nb::module_& m) {
 
     nb::class_<Wt::WIdentityProxyModel, Wt::WAbstractProxyModel>(
         m, "WIdentityProxyModel")
-        .def(nb::init<>());
+        .def(heap_init<Wt::WIdentityProxyModel>());
 
     // ---- WReadOnlyProxyModel: strips edit capability ----
     //
@@ -64,7 +64,7 @@ void register_modelview_proxy(nb::module_& m) {
 
     nb::class_<Wt::WReadOnlyProxyModel, Wt::WAbstractProxyModel>(
         m, "WReadOnlyProxyModel")
-        .def(nb::init<>());
+        .def(heap_init<Wt::WReadOnlyProxyModel>());
 
     // ---- WSortFilterProxyModel: sorts and filters rows ----
     //
@@ -78,7 +78,7 @@ void register_modelview_proxy(nb::module_& m) {
 
     nb::class_<Wt::WSortFilterProxyModel, Wt::WAbstractProxyModel>(
         m, "WSortFilterProxyModel")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WSortFilterProxyModel>())
         .def_prop_rw("filter_key_column",
             &Wt::WSortFilterProxyModel::filterKeyColumn,
             &Wt::WSortFilterProxyModel::setFilterKeyColumn,

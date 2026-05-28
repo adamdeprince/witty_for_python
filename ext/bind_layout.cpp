@@ -21,7 +21,7 @@ void register_layout(nb::module_& m) {
         .value("BottomToTop", Wt::LayoutDirection::BottomToTop);
 
     nb::class_<Wt::WBoxLayout, Wt::WLayout>(m, "WBoxLayout")
-        .def(nb::init<Wt::LayoutDirection>(), "direction"_a)
+        .def(heap_init<Wt::WBoxLayout, Wt::LayoutDirection>(), "direction"_a)
         .def("add_widget",
              [](Wt::WBoxLayout& self, std::unique_ptr<Wt::WWidget> w, int stretch) {
                  self.addWidget(std::move(w), stretch);
@@ -42,13 +42,13 @@ void register_layout(nb::module_& m) {
              "size_px"_a);
 
     nb::class_<Wt::WHBoxLayout, Wt::WBoxLayout>(m, "WHBoxLayout")
-        .def(nb::init<>());
+        .def(heap_init<Wt::WHBoxLayout>());
 
     nb::class_<Wt::WVBoxLayout, Wt::WBoxLayout>(m, "WVBoxLayout")
-        .def(nb::init<>());
+        .def(heap_init<Wt::WVBoxLayout>());
 
     nb::class_<Wt::WGridLayout, Wt::WLayout>(m, "WGridLayout")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WGridLayout>())
         .def("add_widget",
              [](Wt::WGridLayout& self, std::unique_ptr<Wt::WWidget> w,
                 int row, int column, int row_span, int column_span) {

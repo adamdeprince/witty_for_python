@@ -68,7 +68,7 @@ void register_navigation(nb::module_& m) {
     // ---- WStackedWidget ----
 
     nb::class_<Wt::WStackedWidget, Wt::WContainerWidget>(m, "WStackedWidget")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WStackedWidget>())
         .def_prop_rw("current_index",
             [](const Wt::WStackedWidget& w) { return w.currentIndex(); },
             [](Wt::WStackedWidget& w, int i) { w.setCurrentIndex(i); })
@@ -78,12 +78,13 @@ void register_navigation(nb::module_& m) {
     // ---- WMenuItem ----
 
     nb::class_<Wt::WMenuItem, Wt::WContainerWidget>(m, "WMenuItem")
-        .def(nb::init<const Wt::WString&>(), "label"_a)
-        .def("__init__",
-            [](Wt::WMenuItem* self, const Wt::WString& label,
-               std::unique_ptr<Wt::WWidget> contents) {
-                new (self) Wt::WMenuItem(label, std::move(contents));
-            }, "label"_a, "contents"_a)
+        .def(heap_init<Wt::WMenuItem, const Wt::WString&>(), "label"_a)
+        .def(nb::new_(
+                [](const Wt::WString& label,
+                   std::unique_ptr<Wt::WWidget> contents) {
+                    return std::make_unique<Wt::WMenuItem>(
+                        label, std::move(contents));
+                }), "label"_a, "contents"_a)
         .def_prop_rw("text",
             [](const Wt::WMenuItem& w) { return w.text(); },
             [](Wt::WMenuItem& w, const Wt::WString& t) { w.setText(t); })
@@ -116,8 +117,8 @@ void register_navigation(nb::module_& m) {
     // which derives directly from WWidget — they skip WInteractWidget. We
     // therefore use WWidget as the Python-visible base.
     nb::class_<Wt::WMenu, Wt::WWidget>(m, "WMenu")
-        .def(nb::init<>())
-        .def(nb::init<Wt::WStackedWidget*>(), "contents_stack"_a)
+        .def(heap_init<Wt::WMenu>())
+        .def(heap_init<Wt::WMenu, Wt::WStackedWidget*>(), "contents_stack"_a)
         .def("add_item",
             [](Wt::WMenu& self, std::unique_ptr<Wt::WMenuItem> item) {
                 return self.addItem(std::move(item));
@@ -157,7 +158,7 @@ void register_navigation(nb::module_& m) {
     // ---- WTabWidget ----
 
     nb::class_<Wt::WTabWidget, Wt::WWidget>(m, "WTabWidget")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WTabWidget>())
         .def("add_tab",
             [](Wt::WTabWidget& self, std::unique_ptr<Wt::WWidget> child,
                const Wt::WString& label) {
@@ -184,7 +185,7 @@ void register_navigation(nb::module_& m) {
     // ---- WPanel / WGroupBox ----
 
     nb::class_<Wt::WPanel, Wt::WWidget>(m, "WPanel")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WPanel>())
         .def_prop_rw("title",
             [](const Wt::WPanel& w) { return w.title(); },
             [](Wt::WPanel& w, const Wt::WString& t) { w.setTitle(t); })
@@ -205,8 +206,8 @@ void register_navigation(nb::module_& m) {
             "widget"_a);
 
     nb::class_<Wt::WGroupBox, Wt::WContainerWidget>(m, "WGroupBox")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "title"_a)
+        .def(heap_init<Wt::WGroupBox>())
+        .def(heap_init<Wt::WGroupBox, const Wt::WString&>(), "title"_a)
         .def_prop_rw("title",
             [](const Wt::WGroupBox& w) { return w.title(); },
             [](Wt::WGroupBox& w, const Wt::WString& t) { w.setTitle(t); });
@@ -217,8 +218,8 @@ void register_navigation(nb::module_& m) {
     // it under WWidget on the Python side.
 
     nb::class_<Wt::WDialog, Wt::WWidget>(m, "WDialog")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "window_title"_a)
+        .def(heap_init<Wt::WDialog>())
+        .def(heap_init<Wt::WDialog, const Wt::WString&>(), "window_title"_a)
         .def_prop_rw("window_title",
             [](const Wt::WDialog& w) { return w.windowTitle(); },
             [](Wt::WDialog& w, const Wt::WString& t) { w.setWindowTitle(t); })

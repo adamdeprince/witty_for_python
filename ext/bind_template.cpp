@@ -29,8 +29,8 @@ void register_template(nb::module_& m) {
     // ---- WTemplate ----
 
     nb::class_<Wt::WTemplate, Wt::WInteractWidget>(m, "WTemplate")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WTemplate>())
+        .def(heap_init<Wt::WTemplate, const Wt::WString&>(), "text"_a)
         .def_prop_rw("template_text",
             [](const Wt::WTemplate& t) { return t.templateText(); },
             [](Wt::WTemplate& t, const Wt::WString& text) {

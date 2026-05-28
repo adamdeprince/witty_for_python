@@ -229,13 +229,14 @@ void register_painting(nb::module_& m) {
     // acquires the GIL before calling Python.
 
     nb::class_<PyPaintedWidget, Wt::WInteractWidget>(m, "WPaintedWidget")
-        .def("__init__", [](PyPaintedWidget* self) {
-            new (self) PyPaintedWidget();
-        })
-        .def("__init__", [](PyPaintedWidget* self, nb::callable paint) {
-            new (self) PyPaintedWidget();
-            self->setPaintCallback(std::move(paint));
-        }, "paint"_a,
+        .def(nb::new_([]() {
+            return std::make_unique<PyPaintedWidget>();
+        }))
+        .def(nb::new_([](nb::callable paint) {
+            auto w = std::make_unique<PyPaintedWidget>();
+            w->setPaintCallback(std::move(paint));
+            return w;
+        }), "paint"_a,
            "Construct with the paint callback. The callable takes a single "
            "WPainter argument — use its draw_* methods to render.")
         .def("set_paint_callback", &PyPaintedWidget::setPaintCallback,
@@ -314,8 +315,8 @@ void register_painting(nb::module_& m) {
             &Wt::WAbstractArea::setTransformable);
 
     nb::class_<Wt::WCircleArea, Wt::WAbstractArea>(m, "WCircleArea")
-        .def(nb::init<>())
-        .def(nb::init<int, int, int>(),
+        .def(heap_init<Wt::WCircleArea>())
+        .def(heap_init<Wt::WCircleArea, int, int, int>(),
              "x"_a, "y"_a, "radius"_a)
         .def("set_center",
             nb::overload_cast<int, int>(&Wt::WCircleArea::setCenter),
@@ -327,14 +328,15 @@ void register_painting(nb::module_& m) {
             &Wt::WCircleArea::setRadius);
 
     nb::class_<Wt::WRectArea, Wt::WAbstractArea>(m, "WRectArea")
-        .def(nb::init<>())
-        .def(nb::init<int, int, int, int>(),
+        .def(heap_init<Wt::WRectArea>())
+        .def(heap_init<Wt::WRectArea, int, int, int, int>(),
              "x"_a, "y"_a, "width"_a, "height"_a)
-        .def(nb::init<const Wt::WRectF&>(), "rect"_a);
+        .def(heap_init<Wt::WRectArea, const Wt::WRectF&>(), "rect"_a);
 
     nb::class_<Wt::WPolygonArea, Wt::WAbstractArea>(m, "WPolygonArea")
-        .def(nb::init<>())
-        .def(nb::init<const std::vector<Wt::WPointF>&>(), "points"_a)
+        .def(heap_init<Wt::WPolygonArea>())
+        .def(heap_init<Wt::WPolygonArea,
+                       const std::vector<Wt::WPointF>&>(), "points"_a)
         .def("add_point",
             nb::overload_cast<double, double>(&Wt::WPolygonArea::addPoint),
             "x"_a, "y"_a)

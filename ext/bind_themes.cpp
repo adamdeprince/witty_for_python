@@ -34,7 +34,7 @@ void register_themes(nb::module_& m) {
     // selected by passing those names to the constructor.
 
     nb::class_<Wt::WCssTheme, Wt::WTheme>(m, "WCssTheme")
-        .def(nb::init<const std::string&>(), "name"_a,
+        .def(heap_init<Wt::WCssTheme, const std::string&>(), "name"_a,
              "Construct a plain-CSS theme — pass 'default' or 'polished' to "
              "use Wt's built-in styles, or any name that matches a CSS file "
              "you serve at <resources>/themes/<name>/wt.css.");
@@ -45,7 +45,7 @@ void register_themes(nb::module_& m) {
     // CSS + JS get auto-served from the bundled Wt resources directory.
 
     nb::class_<Wt::WBootstrap5Theme, Wt::WTheme>(m, "WBootstrap5Theme")
-        .def(nb::init<>(),
+        .def(heap_init<Wt::WBootstrap5Theme>(),
              "Construct a Bootstrap 5 theme. Attach it to an application "
              "with `app.theme = wt.WBootstrap5Theme()`.");
 
@@ -57,12 +57,12 @@ void register_themes(nb::module_& m) {
     // directory.
 
     nb::class_<Wt::WBootstrap2Theme, Wt::WTheme>(m, "WBootstrap2Theme")
-        .def(nb::init<>(),
+        .def(heap_init<Wt::WBootstrap2Theme>(),
              "Bootstrap 2 theme. Useful for older apps; new code should "
              "prefer WBootstrap5Theme.");
 
     nb::class_<Wt::WBootstrap3Theme, Wt::WTheme>(m, "WBootstrap3Theme")
-        .def(nb::init<>(),
+        .def(heap_init<Wt::WBootstrap3Theme>(),
              "Bootstrap 3 theme. Useful for apps tracking the Bootstrap-3 "
              "ecosystem; new code should prefer WBootstrap5Theme.");
 }

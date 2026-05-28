@@ -59,9 +59,9 @@ void register_chrome(nb::module_& m) {
     // `triggered` to know when the cycle is done.
 
     nb::class_<Wt::WPopupMenu, Wt::WMenu>(m, "WPopupMenu")
-        .def("__init__", [](Wt::WPopupMenu* self) {
-            new (self) Wt::WPopupMenu(nullptr);
-        })
+        .def(nb::new_([]() {
+            return std::make_unique<Wt::WPopupMenu>(nullptr);
+        }))
         .def("popup",
              nb::overload_cast<const Wt::WPoint&>(&Wt::WPopupMenu::popup),
              "point"_a,
@@ -105,8 +105,8 @@ void register_chrome(nb::module_& m) {
     // inline-block by default — handy for "12 unread"-style counts.
 
     nb::class_<Wt::WBadge, Wt::WText>(m, "WBadge")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WBadge>())
+        .def(heap_init<Wt::WBadge, const Wt::WString&>(), "text"_a)
         .def_prop_rw("use_default_style",
             &Wt::WBadge::useDefaultStyle,
             &Wt::WBadge::setUseDefaultStyle,
@@ -116,7 +116,7 @@ void register_chrome(nb::module_& m) {
     // ---- WToolBar: horizontal/vertical row of buttons + separators ----
 
     nb::class_<Wt::WToolBar, Wt::WWidget>(m, "WToolBar")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WToolBar>())
         .def("set_orientation", &Wt::WToolBar::setOrientation,
              "orientation"_a,
              "Horizontal or Vertical layout for the buttons. Write-only on "
@@ -167,8 +167,8 @@ void register_chrome(nb::module_& m) {
     // `split_btn.set_menu(menu)` to wire the dropdown.
 
     nb::class_<Wt::WSplitButton, Wt::WWidget>(m, "WSplitButton")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "label"_a)
+        .def(heap_init<Wt::WSplitButton>())
+        .def(heap_init<Wt::WSplitButton, const Wt::WString&>(), "label"_a)
         .def_prop_ro("action_button", &Wt::WSplitButton::actionButton,
                      nb::rv_policy::reference_internal,
                      "The primary (left) button — connect `clicked` for the "
@@ -197,7 +197,7 @@ void register_chrome(nb::module_& m) {
     // older themes and for symmetry with the C++ surface.
 
     nb::class_<Wt::WNavigationBar, Wt::WTemplate>(m, "WNavigationBar")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WNavigationBar>())
         .def("set_title", &Wt::WNavigationBar::setTitle,
              "title"_a, "link"_a = Wt::WLink(),
              "Set the brand/title shown at the left of the nav bar. "

@@ -86,8 +86,8 @@ void register_validators(nb::module_& m) {
     // ---- WIntValidator ----
 
     nb::class_<Wt::WIntValidator, Wt::WValidator>(m, "WIntValidator")
-        .def(nb::init<>())
-        .def(nb::init<int, int>(), "minimum"_a, "maximum"_a)
+        .def(heap_init<Wt::WIntValidator>())
+        .def(heap_init<Wt::WIntValidator, int, int>(), "minimum"_a, "maximum"_a)
         .def_prop_rw("bottom",
             [](const Wt::WIntValidator& v) { return v.bottom(); },
             [](Wt::WIntValidator& v, int b) { v.setBottom(b); })
@@ -112,8 +112,8 @@ void register_validators(nb::module_& m) {
     // ---- WDoubleValidator ----
 
     nb::class_<Wt::WDoubleValidator, Wt::WValidator>(m, "WDoubleValidator")
-        .def(nb::init<>())
-        .def(nb::init<double, double>(), "minimum"_a, "maximum"_a)
+        .def(heap_init<Wt::WDoubleValidator>())
+        .def(heap_init<Wt::WDoubleValidator, double, double>(), "minimum"_a, "maximum"_a)
         .def_prop_rw("bottom",
             [](const Wt::WDoubleValidator& v) { return v.bottom(); },
             [](Wt::WDoubleValidator& v, double b) { v.setBottom(b); })
@@ -135,8 +135,8 @@ void register_validators(nb::module_& m) {
     // ---- WLengthValidator ----
 
     nb::class_<Wt::WLengthValidator, Wt::WValidator>(m, "WLengthValidator")
-        .def(nb::init<>())
-        .def(nb::init<int, int>(), "minimum_length"_a, "maximum_length"_a)
+        .def(heap_init<Wt::WLengthValidator>())
+        .def(heap_init<Wt::WLengthValidator, int, int>(), "minimum_length"_a, "maximum_length"_a)
         .def_prop_rw("minimum_length",
             [](const Wt::WLengthValidator& v) { return v.minimumLength(); },
             [](Wt::WLengthValidator& v, int n) { v.setMinimumLength(n); })
@@ -153,8 +153,8 @@ void register_validators(nb::module_& m) {
     // ---- WRegExpValidator ----
 
     nb::class_<Wt::WRegExpValidator, Wt::WValidator>(m, "WRegExpValidator")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "pattern"_a)
+        .def(heap_init<Wt::WRegExpValidator>())
+        .def(heap_init<Wt::WRegExpValidator, const Wt::WString&>(), "pattern"_a)
         .def_prop_rw("pattern",
             [](const Wt::WRegExpValidator& v) { return v.regExpPattern(); },
             [](Wt::WRegExpValidator& v, const Wt::WString& p) { v.setRegExp(p); })
@@ -165,7 +165,7 @@ void register_validators(nb::module_& m) {
     // ---- WEmailValidator ----
 
     nb::class_<Wt::WEmailValidator, Wt::WValidator>(m, "WEmailValidator")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WEmailValidator>())
         .def_prop_rw("multiple",
             [](const Wt::WEmailValidator& v) { return v.multiple(); },
             [](Wt::WEmailValidator& v, bool m) { v.setMultiple(m); })
@@ -181,7 +181,7 @@ void register_validators(nb::module_& m) {
     // ---- WStackedValidator ----
 
     nb::class_<Wt::WStackedValidator, Wt::WValidator>(m, "WStackedValidator")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WStackedValidator>())
         .def("add_validator",
             [](Wt::WStackedValidator& self, std::shared_ptr<Wt::WValidator> v) {
                 self.addValidator(v);

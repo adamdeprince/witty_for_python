@@ -148,7 +148,7 @@ void register_filedrop(nb::module_& m) {
     auto drop_cls = nb::class_<Wt::WFileDropWidget, Wt::WContainerWidget>(
         m, "WFileDropWidget");
     drop_cls
-        .def(nb::init<>())
+        .def(heap_init<Wt::WFileDropWidget>())
         .def_prop_ro("uploads", &Wt::WFileDropWidget::uploads,
                      "List[File] — all files known to the widget, including "
                      "ones whose upload is queued, in progress, completed, "

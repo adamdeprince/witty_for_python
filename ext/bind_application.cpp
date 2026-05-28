@@ -105,7 +105,7 @@ void register_application(nb::module_& m) {
                      nb::rv_policy::reference_internal);
 
     nb::class_<Wt::WApplication, Wt::WObject>(m, "WApplication")
-        .def(nb::init<const Wt::WEnvironment&>(), "environment"_a)
+        .def(heap_init<Wt::WApplication, const Wt::WEnvironment&>(), "environment"_a)
         .def_prop_ro("root", &Wt::WApplication::root,
                      nb::rv_policy::reference_internal)
         .def_prop_ro("environment", &Wt::WApplication::environment,

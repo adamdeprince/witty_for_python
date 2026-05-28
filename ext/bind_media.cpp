@@ -110,12 +110,12 @@ void register_media(nb::module_& m) {
     // ---- WAudio ----
 
     nb::class_<Wt::WAudio, Wt::WAbstractMedia>(m, "WAudio")
-        .def(nb::init<>());
+        .def(heap_init<Wt::WAudio>());
 
     // ---- WVideo ----
 
     nb::class_<Wt::WVideo, Wt::WAbstractMedia>(m, "WVideo")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WVideo>())
         .def("set_poster", &Wt::WVideo::setPoster, "url"_a,
              "URL of a thumbnail shown before playback starts (HTML "
              "`poster` attribute).");
@@ -168,7 +168,7 @@ void register_media(nb::module_& m) {
     // WMediaPlayer extends WCompositeWidget — bind as WWidget per project
     // convention.
     nb::class_<Wt::WMediaPlayer, Wt::WWidget>(m, "WMediaPlayer")
-        .def(nb::init<Wt::MediaType>(), "media_type"_a,
+        .def(heap_init<Wt::WMediaPlayer, Wt::MediaType>(), "media_type"_a,
              "Construct an audio or video player.")
         .def("add_source", &Wt::WMediaPlayer::addSource,
              "encoding"_a, "link"_a,
@@ -239,7 +239,7 @@ void register_media(nb::module_& m) {
     // WAudio or WMediaPlayer.
 
     nb::class_<Wt::WSound, Wt::WObject>(m, "WSound")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WSound>())
         .def("add_source", &Wt::WSound::addSource,
              "encoding"_a, "link"_a)
         .def("get_source", &Wt::WSound::getSource, "encoding"_a)

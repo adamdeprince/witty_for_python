@@ -27,7 +27,7 @@ void register_table(nb::module_& m) {
         .def_prop_ro("column_num", &Wt::WTableColumn::columnNum);
 
     nb::class_<Wt::WTable, Wt::WInteractWidget>(m, "WTable")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WTable>())
         .def("element_at",
              nb::overload_cast<int, int>(&Wt::WTable::elementAt),
              "row"_a, "column"_a, nb::rv_policy::reference_internal)

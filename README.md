@@ -83,8 +83,18 @@ examples/               # Sample Wt apps written in Python
 Wt 4 uses `std::unique_ptr` for widget ownership; the bindings mirror this:
 
 - A widget you construct in Python is owned by Python.
-- `container.add_widget(widget)` **transfers ownership** to the container. The original Python reference is invalidated — rebind to the returned non-owning handle (`widget = container.add_widget(widget)`), whose lifetime is tied to the parent.
-- Returning a `WApplication` from an entry-point factory hands ownership to the Wt session manager.
+- `container.add_widget(widget)` **transfers ownership** of the underlying C++ instance to the container, then re-arms the Python wrapper as a *non-owning alias*. The wrapper stays usable, the call **returns the same Python object** (`identity` and `subtype` preserved), and the fluent shape works:
+  ```python
+  btn = wt.WPushButton("ok")
+  same = container.add_widget(btn)
+  assert same is btn                    # identity preserved
+  same.clicked.connect(handler)         # wrapper still usable
+  container.add_widget(wt.WPushButton("x")).clicked.connect(other)  # chains
+  ```
+  The same `re-arm after transfer` pattern is applied across the bindings — see [docs/binding_design.md §4](docs/binding_design.md) for the binding-side rules (every widget class is built via `heap_init` so it can transfer to `unique_ptr`; every `add_*`/`set_*`/`insert_*` method calls `nb::inst_set_state` to mark the source wrapper non-owning after the transfer).
+- Returning a `WApplication` from an entry-point factory hands ownership to the Wt session manager (the factory is invoked through a hand-written closure that pins `WEnvironment` to `rv_policy::reference` so the non-copyable env isn't copied — see §4.3 of the binding-design doc).
+
+Static type-checker note: `add_widget`'s stub is currently `(widget: object) -> object` because nanobind's stubgen doesn't see through the `nb::object → unique_ptr → nb::object` flow. At runtime `isinstance(c.add_widget(b), WPushButton)` is True; for static typing either keep a separate handle or use `cast(WPushButton, c.add_widget(b))`.
 
 ## Signal binding
 

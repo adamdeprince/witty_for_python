@@ -129,11 +129,11 @@ void register_chart(nb::module_& m) {
     // OR after attaching to a chart.
 
     nb::class_<ch::WDataSeries>(chart, "WDataSeries")
-        .def("__init__",
-            [](ch::WDataSeries* self, int model_column,
-               ch::SeriesType type, ch::Axis axis) {
-                new (self) ch::WDataSeries(model_column, type, axis);
-            },
+        .def(nb::new_(
+                [](int model_column, ch::SeriesType type, ch::Axis axis) {
+                    return std::make_unique<ch::WDataSeries>(
+                        model_column, type, axis);
+                }),
             "model_column"_a, "type"_a = ch::SeriesType::Point,
             "axis"_a = ch::Axis::Y1,
             "Construct a series reading values from `model_column` of the "

@@ -43,7 +43,7 @@ void register_upload(nb::module_& m) {
     // during a long upload with (received, total) byte counts).
 
     nb::class_<Wt::WFileUpload, Wt::WWidget>(m, "WFileUpload")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WFileUpload>())
         .def_prop_rw("multiple",
             &Wt::WFileUpload::multiple,
             &Wt::WFileUpload::setMultiple,

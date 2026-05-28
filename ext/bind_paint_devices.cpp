@@ -57,7 +57,7 @@ void register_paint_devices(nb::module_& m) {
     // inside a WPainter constructed against the WSvgImage as device.
 
     nb::class_<Wt::WSvgImage, Wt::WResource>(m, "WSvgImage")
-        .def(nb::init<const Wt::WLength&, const Wt::WLength&>(),
+        .def(heap_init<Wt::WSvgImage, const Wt::WLength&, const Wt::WLength&>(),
              "width"_a, "height"_a,
              "Create an SVG paint surface of the given size. Construct a "
              "WPainter against it, paint, then mount the WSvgImage on a "
@@ -70,7 +70,7 @@ void register_paint_devices(nb::module_& m) {
     // off-screen rendering use cases (capture a canvas to a string).
 
     nb::class_<Wt::WCanvasPaintDevice, Wt::WPaintDevice>(m, "WCanvasPaintDevice")
-        .def(nb::init<const Wt::WLength&, const Wt::WLength&>(),
+        .def(heap_init<Wt::WCanvasPaintDevice, const Wt::WLength&, const Wt::WLength&>(),
              "width"_a, "height"_a);
 
     // ---- WMeasurePaintDevice ----
@@ -81,7 +81,7 @@ void register_paint_devices(nb::module_& m) {
     // real device.
 
     nb::class_<Wt::WMeasurePaintDevice, Wt::WPaintDevice>(m, "WMeasurePaintDevice")
-        .def(nb::init<Wt::WPaintDevice*>(), "delegate"_a,
+        .def(heap_init<Wt::WMeasurePaintDevice, Wt::WPaintDevice*>(), "delegate"_a,
              "Construct over an underlying device — `delegate` is consulted "
              "for font metrics but no rendering reaches it.")
         .def_prop_ro("bounding_rect", &Wt::WMeasurePaintDevice::boundingRect,
@@ -103,7 +103,7 @@ void register_paint_devices(nb::module_& m) {
     //   app.add_resource(pdf, "/report.pdf")
 
     nb::class_<Wt::WPdfImage, Wt::WResource>(m, "WPdfImage")
-        .def(nb::init<const Wt::WLength&, const Wt::WLength&>(),
+        .def(heap_init<Wt::WPdfImage, const Wt::WLength&, const Wt::WLength&>(),
              "width"_a, "height"_a,
              "Create a PDF paint surface with the given page dimensions "
              "(typically in WLength.Point units — A4 portrait is roughly "

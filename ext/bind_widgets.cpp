@@ -17,15 +17,15 @@ void register_widgets(nb::module_& m) {
     // a parameter type below, the Python class is already established.
 
     nb::class_<Wt::WText, Wt::WInteractWidget>(m, "WText")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WText>())
+        .def(heap_init<Wt::WText, const Wt::WString&>(), "text"_a)
         .def_prop_rw("text",
             [](const Wt::WText& w) { return w.text(); },
             [](Wt::WText& w, const Wt::WString& t) { w.setText(t); });
 
     nb::class_<Wt::WPushButton, Wt::WFormWidget>(m, "WPushButton")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WPushButton>())
+        .def(heap_init<Wt::WPushButton, const Wt::WString&>(), "text"_a)
         .def_prop_rw("text",
             [](const Wt::WPushButton& w) { return w.text(); },
             [](Wt::WPushButton& w, const Wt::WString& t) { w.setText(t); })
@@ -34,8 +34,8 @@ void register_widgets(nb::module_& m) {
             [](Wt::WPushButton& w, const Wt::WLink& l) { w.setLink(l); });
 
     nb::class_<Wt::WLineEdit, Wt::WFormWidget>(m, "WLineEdit")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WLineEdit>())
+        .def(heap_init<Wt::WLineEdit, const Wt::WString&>(), "text"_a)
         .def_prop_rw("text",
             [](const Wt::WLineEdit& w) { return w.text(); },
             [](Wt::WLineEdit& w, const Wt::WString& t) { w.setText(t); })
@@ -49,8 +49,8 @@ void register_widgets(nb::module_& m) {
                      nb::rv_policy::reference_internal);
 
     nb::class_<Wt::WCheckBox, Wt::WFormWidget>(m, "WCheckBox")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WCheckBox>())
+        .def(heap_init<Wt::WCheckBox, const Wt::WString&>(), "text"_a)
         .def_prop_rw("checked",
             [](const Wt::WCheckBox& w) { return w.isChecked(); },
             [](Wt::WCheckBox& w, bool c) { w.setChecked(c); })
@@ -62,17 +62,17 @@ void register_widgets(nb::module_& m) {
             nb::rv_policy::reference_internal);
 
     nb::class_<Wt::WAnchor, Wt::WContainerWidget>(m, "WAnchor")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WLink&>(), "link"_a)
-        .def(nb::init<const Wt::WLink&, const Wt::WString&>(), "link"_a, "text"_a)
+        .def(heap_init<Wt::WAnchor>())
+        .def(heap_init<Wt::WAnchor, const Wt::WLink&>(), "link"_a)
+        .def(heap_init<Wt::WAnchor, const Wt::WLink&, const Wt::WString&>(), "link"_a, "text"_a)
         .def_prop_rw("link",
             [](const Wt::WAnchor& w) { return w.link(); },
             [](Wt::WAnchor& w, const Wt::WLink& l) { w.setLink(l); });
 
     nb::class_<Wt::WImage, Wt::WInteractWidget>(m, "WImage")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WLink&>(), "link"_a)
-        .def(nb::init<const Wt::WLink&, const Wt::WString&>(),
+        .def(heap_init<Wt::WImage>())
+        .def(heap_init<Wt::WImage, const Wt::WLink&>(), "link"_a)
+        .def(heap_init<Wt::WImage, const Wt::WLink&, const Wt::WString&>(),
              "link"_a, "alt_text"_a)
         .def_prop_rw("image_link",
             [](const Wt::WImage& w) { return w.imageLink(); },

@@ -30,7 +30,7 @@ void register_layouts_extra(nb::module_& m) {
     // add_widget(widget, position); unspecified regions collapse to zero.
 
     nb::class_<Wt::WBorderLayout, Wt::WLayout>(m, "WBorderLayout")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WBorderLayout>())
         .def("add_widget",
             // Ownership: move in, return raw pointer for chained access
             // (matching the pattern used elsewhere in the binding).
@@ -51,7 +51,7 @@ void register_layouts_extra(nb::module_& m) {
     // and `height=100%` without writing the CSS.
 
     nb::class_<Wt::WFitLayout, Wt::WLayout>(m, "WFitLayout")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WFitLayout>())
         .def("add_widget",
             [](Wt::WFitLayout& self,
                std::unique_ptr<Wt::WWidget> w) -> Wt::WWidget* {

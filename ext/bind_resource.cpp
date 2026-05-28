@@ -79,15 +79,16 @@ void register_resource(nb::module_& m) {
     // Construction takes a MIME type and optional initial bytes.
 
     nb::class_<Wt::WMemoryResource, Wt::WResource>(m, "WMemoryResource")
-        .def(nb::init<>())
-        .def(nb::init<const std::string&>(), "mime_type"_a)
-        .def("__init__",
-             [](Wt::WMemoryResource* self, const std::string& mime,
-                nb::bytes data) {
-                 const auto* p = reinterpret_cast<const unsigned char*>(data.c_str());
-                 new (self) Wt::WMemoryResource(mime,
-                     std::vector<unsigned char>(p, p + data.size()));
-             },
+        .def(heap_init<Wt::WMemoryResource>())
+        .def(heap_init<Wt::WMemoryResource, const std::string&>(), "mime_type"_a)
+        .def(nb::new_(
+                [](const std::string& mime, nb::bytes data) {
+                    const auto* p = reinterpret_cast<const unsigned char*>(
+                        data.c_str());
+                    return std::make_unique<Wt::WMemoryResource>(
+                        mime,
+                        std::vector<unsigned char>(p, p + data.size()));
+                }),
              "mime_type"_a, "data"_a)
         .def_prop_rw("data",
             // Getter — return a Python `bytes` snapshot of the stored data.
@@ -108,9 +109,9 @@ void register_resource(nb::module_& m) {
     // ---- WFileResource: serve a file from disk ----
 
     nb::class_<Wt::WFileResource, Wt::WStreamResource>(m, "WFileResource")
-        .def(nb::init<>())
-        .def(nb::init<const std::string&>(), "file_name"_a)
-        .def(nb::init<const std::string&, const std::string&>(),
+        .def(heap_init<Wt::WFileResource>())
+        .def(heap_init<Wt::WFileResource, const std::string&>(), "file_name"_a)
+        .def(heap_init<Wt::WFileResource, const std::string&, const std::string&>(),
              "mime_type"_a, "file_name"_a)
         .def_prop_rw("file_name",
             [](const Wt::WFileResource& r) { return r.fileName(); },

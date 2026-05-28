@@ -47,7 +47,7 @@ void register_extra_form(nb::module_& m) {
     // custom validator turns the built-in checks off.
 
     nb::class_<Wt::WPasswordEdit, Wt::WLineEdit>(m, "WPasswordEdit")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WPasswordEdit>())
         .def_prop_rw("native_control",
             &Wt::WPasswordEdit::nativeControl,
             &Wt::WPasswordEdit::setNativeControl,
@@ -98,8 +98,8 @@ void register_extra_form(nb::module_& m) {
     // user accepts the edit via the save button or Enter key.
 
     nb::class_<Wt::WInPlaceEdit, Wt::WWidget>(m, "WInPlaceEdit")
-        .def(nb::init<const Wt::WString&>(), "text"_a)
-        .def(nb::init<bool, const Wt::WString&>(),
+        .def(heap_init<Wt::WInPlaceEdit, const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WInPlaceEdit, bool, const Wt::WString&>(),
              "with_buttons"_a, "text"_a,
              "When `with_buttons` is False, the edit auto-saves on blur and "
              "no save/cancel buttons are shown.")
@@ -206,7 +206,7 @@ void register_extra_form(nb::module_& m) {
     auto popup_cls = nb::class_<Wt::WSuggestionPopup, Wt::WWidget>(
         m, "WSuggestionPopup");
     popup_cls
-        .def(nb::init<const Wt::WSuggestionPopup::Options&>(), "options"_a,
+        .def(heap_init<Wt::WSuggestionPopup, const Wt::WSuggestionPopup::Options&>(), "options"_a,
              "Construct with an Options config — see WSuggestionPopup.Options.")
         .def("for_edit",
             // Take triggers as a plain int so callers can OR bit values
@@ -271,8 +271,8 @@ void register_extra_form(nb::module_& m) {
     // ---- WColorPicker: HTML5 <input type=color> ----
 
     nb::class_<Wt::WColorPicker, Wt::WFormWidget>(m, "WColorPicker")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WColor&>(), "color"_a)
+        .def(heap_init<Wt::WColorPicker>())
+        .def(heap_init<Wt::WColorPicker, const Wt::WColor&>(), "color"_a)
         .def_prop_rw("color",
             [](const Wt::WColorPicker& w) { return w.color(); },
             [](Wt::WColorPicker& w, const Wt::WColor& c) { w.setColor(c); })

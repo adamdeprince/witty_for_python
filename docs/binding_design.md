@@ -126,34 +126,109 @@ Detection: `type(cb).__name__ == "nb_bound_method"`. Don't use `PyTypeObject::tp
 
 ---
 
-## §4. Ownership transfer
+## §4. Ownership transfer (CRITICAL — read all four parts)
 
-Wt 4 owns its widget tree via `std::unique_ptr`. Mirror that in the binding:
+Wt 4 owns its widget tree via `std::unique_ptr`. Three things have to align for that to work from Python:
+
+1. **Widget classes must be constructible via `heap_init` (NOT `nb::init`).**
+2. **`add_widget`/`add_*`/`set_*` lambdas that take `unique_ptr<T>` must re-arm the Python wrapper after transfer.**
+3. **Entry-point factories must convert `WEnvironment` with `rv_policy::reference`, not via `std::function<…>` caster.**
+
+If any one of these is missing, the failure mode is silent at module-load and explodes at runtime — usually with a *generic* nanobind error in Release builds (`Critical nanobind error: encountered an unrecoverable error condition. Recompile using the 'Debug' mode...`). To get the real message during debugging, edit `…/nanobind/src/nb_internals.h` and turn the `#if defined(NB_COMPACT_ASSERTIONS)` arm off (verbose checks on Release), then `rm` the `nanobind-static-*.dir/*.o` objects and re-`pip install`. Revert when done.
+
+### §4.1 `heap_init` over `nb::init`
+
+`nb::init<…>` allocates the C++ instance **inside the PyObject's tail buffer** (sets `internal=1` on the nb_inst). nanobind refuses to transfer those to a plain `std::unique_ptr<T>` — the destructor would `delete` memory that wasn't separately heap-allocated, corrupting the heap. The check is `nb_type_relinquish_ownership` in `nb_type.cpp` and looks for `!internal && cpp_delete && destruct`. Internal-storage instances fail it.
+
+`heap_init<T, Args…>()` (in `ext/common.hpp`) wraps `nb::new_(factory)`: the factory `std::make_unique<T>(args...)` heap-allocates externally, and the resulting nb_inst has `internal=0`, `cpp_delete=1`, `destruct=1` — so the relinquish check passes.
+
+**Rule**: every widget-like class binding (anything derived from `Wt::WObject`, anything that's ever passed to a `unique_ptr<T>`-taking method) uses `heap_init`:
+
+```cpp
+nb::class_<Wt::WPushButton, Wt::WFormWidget>(m, "WPushButton")
+    .def(heap_init<Wt::WPushButton>())
+    .def(heap_init<Wt::WPushButton, const Wt::WString&>(), "text"_a)
+```
+
+Replace any `.def("__init__", [](T* self, …) { new (self) T(…); })` (the placement-new convention often used for unique_ptr-taking constructors like `WMenuItem(WString, unique_ptr<WWidget>)`) with `.def(nb::new_([](…) { return std::make_unique<T>(…); }))`.
+
+Leave **value types** (`WColor`, `WBrush`, `WFont`, `WAnimation`, `WModelIndex`, `Json::Object`/`Array`/`Value`, `WPainter::Image`, `WLeafletMap::Coordinate`, etc.) on `nb::init` — they aren't passed via `unique_ptr` so the storage choice doesn't matter, and `nb::init` is simpler.
+
+`tests/test_gallery_factory.py` exercises `create_app`; if you add a widget class and forget `heap_init`, it surfaces there. The bootstrap-only `test_gallery_boot.py` does **not** catch this — Wt's two-step handshake means the factory only runs on the second request (`?wtd=…&request=script`). The factory test does that second request.
+
+### §4.2 Re-arm the wrapper in `add_*`/`set_*`/`insert_*` bodies
+
+`nb::cast<std::unique_ptr<T>>(py_widget)` succeeds (assuming §4.1), transfers the C++ object to your local unique_ptr, but **leaves the Python wrapper in `state_relinquished`** — any subsequent attribute access raises. That breaks the fluent interface:
+
+```python
+button = root.add_widget(wt.WPushButton("ok"))
+button.clicked.connect(handler)   # would raise without re-arm
+```
+
+So after transferring, restore the wrapper to a ready+non-owning state with `nb::inst_set_state(py_widget, /*ready*/ true, /*destruct*/ false)`. The canonical pattern (in `bind_container.cpp` for `add_widget`):
 
 ```cpp
 .def("add_widget",
-     [](Wt::WContainerWidget& self, std::unique_ptr<Wt::WWidget> w) -> Wt::WWidget* {
-         Wt::WWidget* raw = w.get();
+     [](Wt::WContainerWidget& self, nb::object py_widget) -> nb::object {
+         auto w = nb::cast<std::unique_ptr<Wt::WWidget>>(py_widget);
          self.addWidget(std::move(w));
-         return raw;
+         nb::inst_set_state(py_widget, /*ready*/ true, /*destruct*/ false);
+         return py_widget;
      },
-     nb::arg("widget"),
-     nb::rv_policy::reference_internal)
+     "widget"_a)
 ```
 
-Two important details:
+This pattern:
 
-- The non-template `addWidget(unique_ptr<WWidget>)` returns `void`. Snapshot the raw pointer **before** moving (the templated `addWidget<Widget>(unique_ptr<Widget>)` returns the pointer, but you can't instantiate it generically here).
-- Use `nb::rv_policy::reference_internal` so the returned wrapper is non-owning and its lifetime is tied to the parent.
+- Returns the **same Python wrapper** (`py_widget`), so `result is widget` is `True`, the subtype (e.g. `WPushButton`) is preserved, and `button.add_widget(b).clicked.connect(...)` chains.
+- Does **not** specify `rv_policy::reference_internal`. The old pattern that returned `Wt::WWidget*` with `reference_internal` worked at runtime (nanobind looked up the wrapper in the c2p map) but emitted `→ WWidget` in the stub, erasing the subtype.
 
-After `add_widget`, the *caller's* original Python wrapper is invalidated by nanobind's `unique_ptr` ownership transfer. Examples and demos must rebind to the return:
+For overloads that **don't** take a Python widget object (e.g. the str→WText convenience), keep the old `unique_ptr` + raw-pointer-return form, register them **before** the `nb::object` overload (nanobind tries overloads in registration order, and `nb::object` matches everything including str — which would then `std::bad_cast`):
+
+```cpp
+.def("add_widget",   // string overload FIRST
+     [](Wt::WContainerWidget& self, const Wt::WString& text) -> Wt::WText* { ... },
+     "text"_a, nb::rv_policy::reference_internal)
+.def("add_widget",   // widget overload SECOND
+     [](Wt::WContainerWidget& self, nb::object py_widget) -> nb::object { ... },
+     "widget"_a)
+```
+
+Bulk variants (`add_widgets(list)`) follow the same pattern — take `nb::list`, iterate, transfer each, re-arm each, return a list of the same Python objects.
+
+**Methods to audit when adding new ones (not exhaustive):** `add_widget`, `add_widgets`, `insert_widget`, `set_layout`, `set_content`, `set_resource`, `set_validator`, `add_button` (Group), `add_marker`/`add_popup`/`add_tooltip` (LeafletMap), `add_item` (Menu/Combo), `add_series` (Chart), `set_root` (StandardItemModel). Anywhere the C++ signature is `std::unique_ptr<T>` and the caller might want to keep using the input variable afterwards.
+
+### §4.3 Entry-point factories: bypass `std::function<…>` caster
+
+`WServer::addEntryPoint` takes a `std::function<unique_ptr<WApplication>(const WEnvironment&)>`. If you bind it directly through nanobind's std::function caster, the caster invokes the Python callable as `handle(f)(env)` — and `nb::handle::operator()` defaults to `rv_policy::automatic_reference`, which `infer_policy<T>` resolves to **`rv_policy::copy` for lvalue-reference parameter types** (see `nb_cast.h::infer_policy`). `WEnvironment` is non-copyable, so this aborts the worker thread with `"nb_type_put(...): attempted to copy an instance that is not copy-constructible!"`.
+
+`bind_server.cpp::add_entry_point` works around this by taking a raw `nb::object factory` and writing the per-request closure manually:
+
+```cpp
+auto wrapped = [factory_obj = std::move(factory)](
+    const Wt::WEnvironment& env) -> std::unique_ptr<Wt::WApplication> {
+    nb::gil_scoped_acquire gil;
+    nb::object env_py = nb::cast(env, nb::rv_policy::reference);  // pin to ref
+    nb::object result = factory_obj(env_py);
+    return nb::cast<std::unique_ptr<Wt::WApplication>>(std::move(result));
+};
+self.addEntryPoint(type, std::move(wrapped), path, favicon);
+```
+
+If you bind any other callback that takes a non-copyable Wt reference (e.g. `WServer::post` already uses `function<void()>` which has no problematic args, but a hypothetical `add_X(callback)` that hands a `const WSomeObject&` to Python would have the same bug), apply the same pattern.
+
+### §4.4 Caller's mental model — write demos this way
 
 ```python
-button = root.add_widget(wt.WPushButton("ok"))  # original wrapper invalidated
-button.text = "clicked"                          # safe — non-owning handle
+btn = wt.WPushButton("ok")               # heap-allocated externally
+same = container.add_widget(btn)         # ownership → container
+assert same is btn                       # identity preserved
+assert isinstance(same, wt.WPushButton)  # subtype preserved
+same.clicked.connect(handler)            # wrapper still works
+btn.text = "still works too"             # the original variable is ALSO valid
 ```
 
-**Application factories** for `add_entry_point` should be typed as `std::function<std::unique_ptr<Wt::WApplication>(const Wt::WEnvironment&)>` so nanobind's std::function caster handles the Python→C++ ownership transfer when the factory returns its `WApplication`.
+The two-variable form is fine, but `c.add_widget(w).method()` is the encouraged shape.
 
 ---
 

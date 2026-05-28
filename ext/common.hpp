@@ -45,6 +45,24 @@ namespace witty_for_python {
 
 using namespace nb::literals;
 
+// Drop-in replacement for `nb::init<Args...>()`. The default `nb::init<>` uses
+// nanobind's *internal* allocation (the C++ instance lives inside the
+// PyObject's tail buffer), which sets `internal=1` on the instance. nanobind
+// refuses to transfer ownership of such instances to a plain
+// `std::unique_ptr<T>` because `delete ptr` on tail-storage memory would
+// corrupt the heap — so `container.add_widget(my_widget)` and any other API
+// that takes `unique_ptr<T>` fails at runtime with a RuntimeWarning + TypeError.
+//
+// `nb::new_(factory)` routes construction through Python's `__new__`,
+// heap-allocating the C++ object externally (`internal=0`, `cpp_delete=1`).
+// Wt's `unique_ptr<WWidget>` signatures then accept Python-constructed widgets.
+template <typename T, typename... Args>
+auto heap_init() {
+    return nb::new_([](Args... args) {
+        return std::make_unique<T>(std::forward<Args>(args)...);
+    });
+}
+
 void register_signals(nb::module_& m);
 void register_application(nb::module_& m);
 void register_validators(nb::module_& m);

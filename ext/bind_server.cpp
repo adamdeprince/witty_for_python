@@ -35,16 +35,29 @@ void register_server(nb::module_& m) {
                      wt_config);
              },
              "argv"_a, "wt_config"_a = std::string())
-        // factory is a Python callable taking WEnvironment, returning a
-        // WApplication. nanobind's std::function caster steals ownership of
-        // the returned WApplication via the unique_ptr return type.
+        // factory is a Python callable taking WEnvironment and returning a
+        // WApplication. We can't use std::function<unique_ptr<WApplication>(
+        // const WEnvironment&)> because nanobind's std::function caster
+        // converts the env via `infer_policy` for lvalue references, which
+        // resolves to `rv_policy::copy` — and WEnvironment is non-copyable.
+        // Bind the Python callable directly and do the conversions ourselves
+        // so we can pin the env to `rv_policy::reference`.
         .def("add_entry_point",
              [](Wt::WServer& self,
                 Wt::EntryPointType type,
-                std::function<std::unique_ptr<Wt::WApplication>(const Wt::WEnvironment&)> factory,
+                nb::object factory,
                 const std::string& path,
                 const std::string& favicon) {
-                 self.addEntryPoint(type, std::move(factory), path, favicon);
+                 auto wrapped = [factory_obj = std::move(factory)](
+                     const Wt::WEnvironment& env)
+                     -> std::unique_ptr<Wt::WApplication> {
+                     nb::gil_scoped_acquire gil;
+                     nb::object env_py = nb::cast(env, nb::rv_policy::reference);
+                     nb::object result = factory_obj(env_py);
+                     return nb::cast<std::unique_ptr<Wt::WApplication>>(
+                         std::move(result));
+                 };
+                 self.addEntryPoint(type, std::move(wrapped), path, favicon);
              },
              "type"_a, "factory"_a,
              "path"_a = std::string("/"),

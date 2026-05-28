@@ -28,11 +28,11 @@ void register_niche_widgets(nb::module_& m) {
         .value("High",     Wt::WQrCode::ErrorCorrectionLevel::HIGH);
 
     nb::class_<Wt::WQrCode, Wt::WInteractWidget>(m, "WQrCode")
-        .def(nb::init<>())
-        .def(nb::init<const std::string&, double>(),
+        .def(heap_init<Wt::WQrCode>())
+        .def(heap_init<Wt::WQrCode, const std::string&, double>(),
              "message"_a, "square_size"_a)
-        .def(nb::init<const std::string&,
-                      Wt::WQrCode::ErrorCorrectionLevel, double>(),
+        .def(heap_init<Wt::WQrCode, const std::string&,
+                       Wt::WQrCode::ErrorCorrectionLevel, double>(),
              "message"_a, "ecl"_a, "square_size"_a,
              "Construct with text, error-correction level, and the size "
              "in pixels of each QR-code square.")
@@ -95,7 +95,7 @@ void register_niche_widgets(nb::module_& m) {
     auto gmap_cls = nb::class_<Wt::WGoogleMap, Wt::WWidget>(m, "WGoogleMap")
         // No default value for the version arg — nanobind has trouble
         // casting value-typed defaults (WColor() etc.) at module init.
-        .def(nb::init<Wt::GoogleMapsVersion>(), "version"_a)
+        .def(heap_init<Wt::WGoogleMap, Wt::GoogleMapsVersion>(), "version"_a)
         .def("set_center",
             nb::overload_cast<const Wt::WGoogleMap::Coordinate&>(
                 &Wt::WGoogleMap::setCenter),
@@ -251,22 +251,30 @@ void register_niche_widgets(nb::module_& m) {
             nb::rv_policy::reference_internal);
 
     // Popup — opens on user interaction (or programmatically via open()).
+    // All construction routes go through nb::new_ (heap allocation) so the
+    // Popup can later transfer to std::unique_ptr<WLeafletMap::Popup> via
+    // Marker.add_popup; nanobind blocks that transfer for nb::init<>-built
+    // instances because their storage is part of the PyObject.
     auto popup_cls =
         nb::class_<Wt::WLeafletMap::Popup,
                    Wt::WLeafletMap::AbstractOverlayItem>(
             m, "WLeafletMapPopup")
-        .def(nb::init<const Wt::WLeafletMap::Coordinate&>(), "pos"_a)
-        .def(nb::init<const Wt::WString&>(), "content"_a,
+        .def(heap_init<Wt::WLeafletMap::Popup,
+                       const Wt::WLeafletMap::Coordinate&>(), "pos"_a)
+        .def(heap_init<Wt::WLeafletMap::Popup, const Wt::WString&>(),
+             "content"_a,
              "Shortcut: popup whose content is a WText wrapping the "
              "given string.")
-        .def(nb::init<const Wt::WLeafletMap::Coordinate&, const Wt::WString&>(),
+        .def(heap_init<Wt::WLeafletMap::Popup,
+                       const Wt::WLeafletMap::Coordinate&,
+                       const Wt::WString&>(),
              "pos"_a, "content"_a)
-        .def("__init__",
-            [](Wt::WLeafletMap::Popup* self,
-               const Wt::WLeafletMap::Coordinate& pos,
-               std::unique_ptr<Wt::WWidget> content) {
-                new (self) Wt::WLeafletMap::Popup(pos, std::move(content));
-            },
+        .def(nb::new_(
+                [](const Wt::WLeafletMap::Coordinate& pos,
+                   std::unique_ptr<Wt::WWidget> content) {
+                    return std::make_unique<Wt::WLeafletMap::Popup>(
+                        pos, std::move(content));
+                }),
             "pos"_a, "content"_a,
             "Popup at `pos` with a widget content. Ownership of "
             "`content` transfers.");
@@ -276,16 +284,20 @@ void register_niche_widgets(nb::module_& m) {
         nb::class_<Wt::WLeafletMap::Tooltip,
                    Wt::WLeafletMap::AbstractOverlayItem>(
             m, "WLeafletMapTooltip")
-        .def(nb::init<const Wt::WLeafletMap::Coordinate&>(), "pos"_a)
-        .def(nb::init<const Wt::WString&>(), "content"_a)
-        .def(nb::init<const Wt::WLeafletMap::Coordinate&, const Wt::WString&>(),
+        .def(heap_init<Wt::WLeafletMap::Tooltip,
+                       const Wt::WLeafletMap::Coordinate&>(), "pos"_a)
+        .def(heap_init<Wt::WLeafletMap::Tooltip, const Wt::WString&>(),
+             "content"_a)
+        .def(heap_init<Wt::WLeafletMap::Tooltip,
+                       const Wt::WLeafletMap::Coordinate&,
+                       const Wt::WString&>(),
              "pos"_a, "content"_a)
-        .def("__init__",
-            [](Wt::WLeafletMap::Tooltip* self,
-               const Wt::WLeafletMap::Coordinate& pos,
-               std::unique_ptr<Wt::WWidget> content) {
-                new (self) Wt::WLeafletMap::Tooltip(pos, std::move(content));
-            },
+        .def(nb::new_(
+                [](const Wt::WLeafletMap::Coordinate& pos,
+                   std::unique_ptr<Wt::WWidget> content) {
+                    return std::make_unique<Wt::WLeafletMap::Tooltip>(
+                        pos, std::move(content));
+                }),
             "pos"_a, "content"_a);
 
     // Marker (abstract — concrete subclasses below).
@@ -337,7 +349,8 @@ void register_niche_widgets(nb::module_& m) {
         nb::class_<Wt::WLeafletMap::LeafletMarker,
                    Wt::WLeafletMap::Marker>(
             m, "WLeafletMapLeafletMarker")
-        .def(nb::init<const Wt::WLeafletMap::Coordinate&>(), "pos"_a,
+        .def(heap_init<Wt::WLeafletMap::LeafletMarker,
+                       const Wt::WLeafletMap::Coordinate&>(), "pos"_a,
              "Construct the standard Leaflet pin marker.")
         .def("set_options",
              &Wt::WLeafletMap::LeafletMarker::setOptions, "options"_a,
@@ -349,13 +362,12 @@ void register_niche_widgets(nb::module_& m) {
         nb::class_<Wt::WLeafletMap::WidgetMarker,
                    Wt::WLeafletMap::Marker>(
             m, "WLeafletMapWidgetMarker")
-        .def("__init__",
-            [](Wt::WLeafletMap::WidgetMarker* self,
-               const Wt::WLeafletMap::Coordinate& pos,
-               std::unique_ptr<Wt::WWidget> widget) {
-                new (self) Wt::WLeafletMap::WidgetMarker(
-                    pos, std::move(widget));
-            },
+        .def(nb::new_(
+                [](const Wt::WLeafletMap::Coordinate& pos,
+                   std::unique_ptr<Wt::WWidget> widget) {
+                    return std::make_unique<Wt::WLeafletMap::WidgetMarker>(
+                        pos, std::move(widget));
+                }),
             "pos"_a, "widget"_a,
             "Place an arbitrary Wt widget at `pos` on the map. "
             "Ownership of the widget transfers.")
@@ -372,8 +384,8 @@ void register_niche_widgets(nb::module_& m) {
              "negative y = vertical center. Default is centred both ways.");
 
     auto leaflet_cls = nb::class_<Wt::WLeafletMap, Wt::WWidget>(m, "WLeafletMap")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::Json::Object&>(), "options"_a,
+        .def(heap_init<Wt::WLeafletMap>())
+        .def(heap_init<Wt::WLeafletMap, const Wt::Json::Object&>(), "options"_a,
              "Construct with Leaflet map options (e.g. centre, zoom). "
              "Pass a Json.Object (or use the default ctor + set_options).")
         .def("set_options",

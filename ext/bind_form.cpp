@@ -37,8 +37,8 @@ void register_form(nb::module_& m) {
     // ---- WLabel: a text or image label, optionally bound to a form widget ----
 
     nb::class_<Wt::WLabel, Wt::WInteractWidget>(m, "WLabel")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WLabel>())
+        .def(heap_init<Wt::WLabel, const Wt::WString&>(), "text"_a)
         .def_prop_rw("text",
             [](const Wt::WLabel& w) { return w.text(); },
             [](Wt::WLabel& w, const Wt::WString& t) { w.setText(t); })
@@ -57,13 +57,13 @@ void register_form(nb::module_& m) {
     // WWidget — that is enough for parent-pointer compatibility.
 
     nb::class_<Wt::WBreak, Wt::WWidget>(m, "WBreak")
-        .def(nb::init<>());
+        .def(heap_init<Wt::WBreak>());
 
     // ---- WTextArea: multi-line text input ----
 
     nb::class_<Wt::WTextArea, Wt::WFormWidget>(m, "WTextArea")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WTextArea>())
+        .def(heap_init<Wt::WTextArea, const Wt::WString&>(), "text"_a)
         .def_prop_rw("text",
             [](const Wt::WTextArea& w) { return w.text(); },
             [](Wt::WTextArea& w, const Wt::WString& t) { w.setText(t); })
@@ -85,7 +85,7 @@ void register_form(nb::module_& m) {
     // on the Python side since we don't expose its methods.
 
     nb::class_<Wt::WSpinBox, Wt::WLineEdit>(m, "WSpinBox")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WSpinBox>())
         .def_prop_rw("value",
             [](const Wt::WSpinBox& w) { return w.value(); },
             [](Wt::WSpinBox& w, int v) { w.setValue(v); })
@@ -106,7 +106,7 @@ void register_form(nb::module_& m) {
                      nb::rv_policy::reference_internal);
 
     nb::class_<Wt::WDoubleSpinBox, Wt::WLineEdit>(m, "WDoubleSpinBox")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WDoubleSpinBox>())
         .def_prop_rw("value",
             [](const Wt::WDoubleSpinBox& w) { return w.value(); },
             [](Wt::WDoubleSpinBox& w, double v) { w.setValue(v); })
@@ -130,8 +130,8 @@ void register_form(nb::module_& m) {
     // ---- WSlider ----
 
     nb::class_<Wt::WSlider, Wt::WFormWidget>(m, "WSlider")
-        .def(nb::init<>())
-        .def(nb::init<Wt::Orientation>(), "orientation"_a)
+        .def(heap_init<Wt::WSlider>())
+        .def(heap_init<Wt::WSlider, Wt::Orientation>(), "orientation"_a)
         .def_prop_rw("value",
             [](const Wt::WSlider& w) { return w.value(); },
             [](Wt::WSlider& w, int v) { w.setValue(v); })
@@ -155,7 +155,7 @@ void register_form(nb::module_& m) {
     // ---- WComboBox + WSelectionBox ----
 
     nb::class_<Wt::WComboBox, Wt::WFormWidget>(m, "WComboBox")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WComboBox>())
         .def("add_item", &Wt::WComboBox::addItem, "text"_a)
         // Python-only bulk variant of add_item. Loops the single-item form;
         // additive (rule §0) — no default behavior changes. Mirrors the
@@ -199,8 +199,8 @@ void register_form(nb::module_& m) {
     // To put a radio button into a group, call group.add_button(button) on
     // the Python side — WRadioButton::setGroup() is private in Wt 4.13.
     nb::class_<Wt::WRadioButton, Wt::WFormWidget>(m, "WRadioButton")
-        .def(nb::init<>())
-        .def(nb::init<const Wt::WString&>(), "text"_a)
+        .def(heap_init<Wt::WRadioButton>())
+        .def(heap_init<Wt::WRadioButton, const Wt::WString&>(), "text"_a)
         .def_prop_rw("checked",
             [](const Wt::WRadioButton& w) { return w.isChecked(); },
             [](Wt::WRadioButton& w, bool c) { w.setChecked(c); })
@@ -216,7 +216,7 @@ void register_form(nb::module_& m) {
             nb::rv_policy::reference_internal);
 
     nb::class_<Wt::WButtonGroup, Wt::WObject>(m, "WButtonGroup")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WButtonGroup>())
         .def("add_button",
              nb::overload_cast<Wt::WRadioButton*, int>(&Wt::WButtonGroup::addButton),
              "button"_a, "id"_a = -1)
@@ -230,7 +230,7 @@ void register_form(nb::module_& m) {
     // ---- WProgressBar ----
 
     nb::class_<Wt::WProgressBar, Wt::WInteractWidget>(m, "WProgressBar")
-        .def(nb::init<>())
+        .def(heap_init<Wt::WProgressBar>())
         .def_prop_rw("value",
             [](const Wt::WProgressBar& w) { return w.value(); },
             [](Wt::WProgressBar& w, double v) { w.setValue(v); })
