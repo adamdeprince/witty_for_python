@@ -30,7 +30,7 @@ def test_py_typed_marker_present() -> None:
     assert (PKG_ROOT / "py.typed").is_file()
 
 
-@pytest.mark.parametrize("name", ["__init__.pyi", "chart.pyi", "Json.pyi"])
+@pytest.mark.parametrize("name", ["__init__.pyi", "chart.pyi", "Json.pyi", "Http.pyi"])
 def test_extension_stub_present(name: str) -> None:
     """Three stub files cover the bindings: the main module plus the
     chart and Json submodules created via def_submodule()."""
@@ -59,3 +59,9 @@ def test_json_stub_contains_json_classes() -> None:
     j = (EXT_STUBS / "Json.pyi").read_text(encoding="utf-8")
     for cls in ("Object", "Array", "Value"):
         assert f"class {cls}" in j, f"{cls} missing from Json stub"
+
+
+def test_http_stub_contains_http_classes() -> None:
+    h = (EXT_STUBS / "Http.pyi").read_text(encoding="utf-8")
+    for cls in ("Request", "Response", "Message", "Client", "Header"):
+        assert f"class {cls}" in h, f"{cls} missing from Http stub"
