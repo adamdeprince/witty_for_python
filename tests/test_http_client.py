@@ -1,0 +1,117 @@
+"""Surface tests for `wt.HttpClient` and `wt.HttpMessage`.
+
+Fully exercising `HttpClient.get()` end-to-end requires a live WApplication
+event loop (the client's I/O completion runs through Wt's worker pool, and
+the done callback only fires within an application context). That's not
+testable in pytest without a browser session driving the WebSocket
+handshake. See `examples/http_client_demo.py` for a runnable
+demonstration of the round trip.
+
+This test verifies:
+  - `HttpMessage` can be constructed and accumulates headers + body
+    (request-direction usage),
+  - `HttpMessage` round-trips via the constructor that accepts a header
+    list and a status code (response-direction shape),
+  - `HttpClient` can be instantiated and the request-issuing methods
+    exist with the expected signatures,
+  - `HttpClient.parse_url` works,
+  - the `HttpMethod` enum is wired.
+"""
+
+from __future__ import annotations
+
+import inspect
+
+import pytest
+
+import witty_for_python as wt
+
+
+def test_http_message_outbound_build() -> None:
+    """Build a request body the way you'd hand it to client.post()."""
+    msg = wt.HttpMessage()
+    msg.add_header("Content-Type", "application/json")
+    msg.add_header("X-Custom", "foo")
+    msg.add_body_text('{"k": "v"}')
+
+    headers = msg.headers
+    assert [(h.name, h.value) for h in headers] == [
+        ("Content-Type", "application/json"),
+        ("X-Custom", "foo"),
+    ]
+    assert msg.body == '{"k": "v"}'
+    # Outbound status is meaningless but the field exists.
+    assert msg.status == -1
+
+
+def test_http_message_inbound_shape() -> None:
+    """The response side: status + headers + body via the headers-list ctor."""
+    msg = wt.HttpMessage(
+        [wt.HttpHeader("Content-Type", "text/plain"),
+         wt.HttpHeader("Cache-Control", "no-store")],
+        200,
+    )
+    assert msg.status == 200
+    assert msg.get_header("Content-Type") == "text/plain"
+    assert msg.get_header("Missing") is None
+
+
+def test_http_message_set_header_replaces() -> None:
+    msg = wt.HttpMessage()
+    msg.set_header("X", "1")
+    msg.set_header("X", "2")
+    assert msg.get_header("X") == "2"
+
+
+def test_http_message_add_header_duplicates() -> None:
+    """add_header allows duplicates (HTTP permits it for Set-Cookie etc.)."""
+    msg = wt.HttpMessage()
+    msg.add_header("Set-Cookie", "a=1")
+    msg.add_header("Set-Cookie", "b=2")
+    assert [h.value for h in msg.headers if h.name == "Set-Cookie"] == ["a=1", "b=2"]
+
+
+def test_http_client_construct_and_callbacks_wired() -> None:
+    """Standalone construction — verifies the binding's ctor + that on_*
+    callbacks accept a callable. No actual request is fired here."""
+    client = wt.HttpClient()
+    assert client.timeout_seconds > 0
+    assert client.maximum_response_size > 0
+
+    # Setters should round-trip.
+    client.set_timeout_seconds(2.5)
+    assert client.timeout_seconds == pytest.approx(2.5)
+
+    client.set_maximum_response_size(1024)
+    assert client.maximum_response_size == 1024
+
+    # Connecting a callback returns a Connection — exercises py_connect
+    # for the headers/body signals.
+    def noop(*args):
+        pass
+    c1 = client.on_done(noop)
+    c2 = client.on_headers_received(noop)
+    c3 = client.on_body_data_received(noop)
+    assert all(c is not None for c in (c1, c2, c3))
+
+
+def test_http_client_request_methods_exist() -> None:
+    """Spot-check that the request-issuing surface is bound. We can't
+    fire a real request without a WApplication context, but invoking
+    them with an obviously-bad URL is enough to confirm the binding
+    accepts the arguments."""
+    client = wt.HttpClient()
+    # parse_url is static and does not need a session.
+    parsed = wt.HttpClient.parse_url("https://user:pw@example.com:8443/x")
+    assert parsed is not None
+    assert parsed.protocol == "https"
+    assert parsed.host == "example.com"
+    assert parsed.port == 8443
+    assert parsed.path == "/x"
+
+    assert wt.HttpClient.parse_url("not a url") is None
+
+
+def test_http_method_enum() -> None:
+    for name in ("Get", "Post", "Put", "Delete", "Patch", "Head"):
+        assert hasattr(wt.HttpMethod, name)

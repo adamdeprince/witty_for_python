@@ -123,6 +123,14 @@ void register_application(nb::module_& m) {
         .def("trigger_update", &Wt::WApplication::triggerUpdate,
              "Force a server-initiated update push to the connected client. "
              "Combine with WServer.post() for cross-thread updates.")
+        .def("defer_rendering", &Wt::WApplication::deferRendering,
+             "Suspend rendering of the current event response until "
+             "resume_rendering() is called. Use this when an async "
+             "operation (HttpClient request, WServer.post background "
+             "work) must complete before the page can be delivered.")
+        .def("resume_rendering", &Wt::WApplication::resumeRendering,
+             "Resume rendering after a previous defer_rendering(). Call "
+             "this from the callback that signals 'we are ready'.")
         .def_static("instance", &Wt::WApplication::instance,
                     nb::rv_policy::reference)
         // The theme is owned via shared_ptr — nanobind keeps the Python

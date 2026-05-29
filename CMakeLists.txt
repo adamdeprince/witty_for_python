@@ -105,6 +105,7 @@ set(WITTY_FOR_PYTHON_SOURCES
   ext/bind_table.cpp
   ext/bind_layout.cpp
   ext/bind_server.cpp
+  ext/bind_http_client.cpp
   ext/bind_themes.cpp
   ext/bind_timer.cpp
   ext/bind_upload.cpp

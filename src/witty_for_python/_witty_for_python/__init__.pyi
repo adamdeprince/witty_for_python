@@ -637,6 +637,16 @@ class WApplication(WObject):
         Force a server-initiated update push to the connected client. Combine with WServer.post() for cross-thread updates.
         """
 
+    def defer_rendering(self) -> None:
+        """
+        Suspend rendering of the current event response until resume_rendering() is called. Use this when an async operation (HttpClient request, WServer.post background work) must complete before the page can be delivered.
+        """
+
+    def resume_rendering(self) -> None:
+        """
+        Resume rendering after a previous defer_rendering(). Call this from the callback that signals 'we are ready'.
+        """
+
     @staticmethod
     def instance() -> WApplication: ...
 
@@ -1887,6 +1897,194 @@ class WServer:
         """
         Schedule `function` to run within every currently-active session. Thread-safe.
         """
+
+class HttpMethod(enum.Enum):
+    Get = 0
+
+    Post = 1
+
+    Put = 2
+
+    Delete = 3
+
+    Patch = 4
+
+    Head = 5
+
+class HttpHeader:
+    @overload
+    def __init__(self) -> None: ...
+
+    @overload
+    def __init__(self, name: str, value: str) -> None: ...
+
+    @property
+    def name(self) -> str: ...
+
+    @name.setter
+    def name(self, arg: str, /) -> None: ...
+
+    @property
+    def value(self) -> str: ...
+
+    @value.setter
+    def value(self, arg: str, /) -> None: ...
+
+class HttpMessage:
+    @overload
+    def __init__(self) -> None:
+        """Construct an empty message with status=-1 and no headers."""
+
+    @overload
+    def __init__(self, headers: Sequence[HttpHeader], status: int = -1) -> None:
+        """Construct with headers and an optional status code."""
+
+    @property
+    def status(self) -> int:
+        """
+        HTTP status code on the response side. For a request, the status field is meaningless (the server sets it).
+        """
+
+    @property
+    def headers(self) -> list[HttpHeader]:
+        """
+        All headers as a list[HttpHeader]. Note: header names may appear more than once; use get_header for the first match.
+        """
+
+    def get_header(self, name: str) -> str | None:
+        """First header value with the given name, or None if absent."""
+
+    @property
+    def body(self) -> str:
+        """
+        Response body as a string. For very large or streaming responses, see HttpClient.on_body_data_received and HttpClient.set_maximum_response_size(0).
+        """
+
+    def set_header(self, name: str, value: str) -> None:
+        """
+        Set a header on the outbound request (replaces any prior value with the same name).
+        """
+
+    def add_header(self, name: str, value: str) -> None:
+        """
+        Append a header (HTTP allows duplicates for some headers, e.g. Set-Cookie).
+        """
+
+    def add_body_text(self, text: str) -> None:
+        """Append to the outbound request body."""
+
+    def set_status(self, status: int) -> None: ...
+
+class HttpClientURL:
+    @property
+    def protocol(self) -> str: ...
+
+    @property
+    def auth(self) -> str: ...
+
+    @property
+    def host(self) -> str: ...
+
+    @property
+    def port(self) -> int: ...
+
+    @property
+    def path(self) -> str: ...
+
+class HttpClient(WObject):
+    def __init__(self) -> None:
+        """
+        Construct using the current WApplication's I/O service. Call from within a WApplication context (e.g. inside a create_app factory or a slot fired by a session).
+        """
+
+    def set_timeout_seconds(self, seconds: float) -> None:
+        """
+        Per-I/O-operation timeout. Resets on each progress event, so total request time can exceed this. Default 10 seconds.
+        """
+
+    @property
+    def timeout_seconds(self) -> float: ...
+
+    def set_maximum_response_size(self, bytes: int) -> None:
+        """
+        Cap on the in-memory response size (DoS guard). Default 64 KiB. A value of 0 disables the limit AND prevents the body from being accumulated into the HttpMessage — use on_body_data_received to process chunks incrementally.
+        """
+
+    @property
+    def maximum_response_size(self) -> int: ...
+
+    def set_ssl_certificate_verification_enabled(self, enabled: bool) -> None:
+        """
+        Verify the server's TLS certificate (https only). Default True — only disable for testing against self-signed certs.
+        """
+
+    @property
+    def ssl_certificate_verification_enabled(self) -> bool: ...
+
+    def set_ssl_verify_file(self, path: str) -> None: ...
+
+    def set_ssl_verify_path(self, path: str) -> None: ...
+
+    def set_follow_redirect(self, follow: bool) -> None: ...
+
+    @property
+    def follow_redirect(self) -> bool: ...
+
+    def set_max_redirects(self, max_redirects: int) -> None: ...
+
+    @property
+    def max_redirects(self) -> int: ...
+
+    @overload
+    def get(self, url: str) -> bool:
+        """
+        Start an async GET. Returns False if the URL was malformed or the scheme unsupported; True if the request was scheduled (the done callback will fire when it completes).
+        """
+
+    @overload
+    def get(self, url: str, headers: Sequence[HttpHeader]) -> bool:
+        """GET with custom request headers."""
+
+    def head(self, url: str) -> bool: ...
+
+    def post(self, url: str, message: HttpMessage) -> bool:
+        """POST. Build the request body as an HttpMessage first."""
+
+    def put(self, url: str, message: HttpMessage) -> bool: ...
+
+    def delete_request(self, url: str, message: HttpMessage) -> bool:
+        """
+        Issue a DELETE. Named `delete_request` because `delete` is a Python keyword.
+        """
+
+    def patch(self, url: str, message: HttpMessage) -> bool: ...
+
+    def request(self, method: HttpMethod, url: str, message: HttpMessage) -> bool:
+        """Issue any HTTP method via HttpMethod enum."""
+
+    def abort(self) -> None:
+        """
+        Cancel the in-flight request (if any). done callback will still fire with an `operation_aborted` error message.
+        """
+
+    def on_done(self, callback: Callable) -> Connection:
+        r"""
+        Register an async callback for the request's completion. Receives `(error_message: str, response: HttpMessage)` — error_message is \'\' on success.
+        """
+
+    def on_headers_received(self, callback: Callable) -> Connection:
+        """
+        Fires once the response headers are in but before the body is fully read. Receives the HttpMessage with headers + empty body. Useful for early-rejection of large downloads.
+        """
+
+    def on_body_data_received(self, callback: Callable) -> Connection:
+        """
+        Fires for every chunk of body data received. Combine with set_maximum_response_size(0) for streaming responses.
+        """
+
+    @staticmethod
+    def parse_url(url: str) -> HttpClientURL | None:
+        """Parse `url` into its components. Returns None if invalid."""
 
 class WTheme(WObject):
     def name(self) -> str:

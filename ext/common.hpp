@@ -95,5 +95,6 @@ void register_json(nb::module_& m);
 void register_table(nb::module_& m);
 void register_layout(nb::module_& m);
 void register_server(nb::module_& m);
+void register_http_client(nb::module_& m);
 
 }  // namespace witty_for_python

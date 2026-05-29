@@ -29,6 +29,10 @@ NB_MODULE(_witty_for_python, m) {
     witty_for_python::register_table(m);
     witty_for_python::register_layout(m);
     witty_for_python::register_server(m);
+    // Http::Client + Http::Message — outbound HTTP from inside Wt. Needs
+    // WObject (Client derives from it) and the signal-helpers from
+    // register_signals (for on_done / on_headers_received).
+    witty_for_python::register_http_client(m);
     // Theme classes (WCssTheme, WBootstrap5Theme) — depend only on WObject.
     witty_for_python::register_themes(m);
     // WTimer — depends on WObject + the MouseEventSignal binding from
