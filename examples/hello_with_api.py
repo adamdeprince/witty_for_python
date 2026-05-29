@@ -9,8 +9,8 @@ Then point a browser at <http://localhost:8080> for the UI, and
 
 The endpoint is a `wt.CallbackResource` — a thin C++ adaptor that
 forwards every request to a Python callable on the Wt worker thread
-(with the GIL acquired). The callback gets a `HttpRequest` (method,
-query params, headers, body, …) and a `HttpResponse` (status,
+(with the GIL acquired). The callback gets a `wt.Http.Request` (method,
+query params, headers, body, …) and a `wt.Http.Response` (status,
 mime-type, write) — both valid only for the duration of the call.
 """
 
@@ -26,7 +26,7 @@ import witty_for_python as wt
 _state = {"counter": 0, "message": "hello, world"}
 
 
-def handle_state(req: wt.HttpRequest, resp: wt.HttpResponse) -> None:
+def handle_state(req: wt.Http.Request, resp: wt.Http.Response) -> None:
     """Serve the current state. Echoes a few request fields too, so the
     demo doubles as a quick check that headers/params/body land in
     Python correctly."""

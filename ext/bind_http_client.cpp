@@ -41,9 +41,15 @@
 namespace witty_for_python {
 
 void register_http_client(nb::module_& m) {
+    // The `Http` submodule is created in register_resource (which runs
+    // first per module.cpp ordering). We attach client-side names to
+    // that same submodule so users see `wt.Http.Client`, `wt.Http.Message`,
+    // etc. next to the server-side `wt.Http.Request` / `wt.Http.Response`.
+    nb::module_ http = nb::cast<nb::module_>(m.attr("Http"));
+
     // ---- Http::Method enum ----
 
-    nb::enum_<Wt::Http::Method>(m, "HttpMethod")
+    nb::enum_<Wt::Http::Method>(http, "Method")
         .value("Get",    Wt::Http::Method::Get)
         .value("Post",   Wt::Http::Method::Post)
         .value("Put",    Wt::Http::Method::Put)
@@ -53,9 +59,13 @@ void register_http_client(nb::module_& m) {
 
     // ---- Http::Message::Header ----
     //
-    // Name/value pair used in Http::Message.headers().
+    // In Wt this is `Wt::Http::Message::Header`. We bind it flat as
+    // `wt.Http.Header` rather than nested under Message because that's
+    // how nanobind class hierarchies work cleanly (no nested types in
+    // a single nb::class_), and re-attach it as `Http.Message.Header`
+    // below for documentation symmetry.
 
-    nb::class_<Wt::Http::Message::Header>(m, "HttpHeader")
+    auto header_cls = nb::class_<Wt::Http::Message::Header>(http, "Header")
         .def(nb::init<>())
         .def(nb::init<const std::string&, const std::string&>(),
              "name"_a, "value"_a)
@@ -74,7 +84,7 @@ void register_http_client(nb::module_& m) {
     // add_body_text() / add_header(). For a response, read it via
     // status, headers, body, and get_header().
 
-    nb::class_<Wt::Http::Message>(m, "HttpMessage")
+    auto message_cls = nb::class_<Wt::Http::Message>(http, "Message")
         .def(nb::init<>(),
              "Construct an empty message with status=-1 and no headers.")
         .def(nb::init<std::vector<Wt::Http::Message::Header>, int>(),
@@ -117,7 +127,7 @@ void register_http_client(nb::module_& m) {
 
     // ---- Http::Client::URL ----
 
-    nb::class_<Wt::Http::Client::URL>(m, "HttpClientURL")
+    auto url_cls = nb::class_<Wt::Http::Client::URL>(http, "ClientURL")
         .def_ro("protocol", &Wt::Http::Client::URL::protocol)
         .def_ro("auth", &Wt::Http::Client::URL::auth)
         .def_ro("host", &Wt::Http::Client::URL::host)
@@ -137,7 +147,7 @@ void register_http_client(nb::module_& m) {
     // (e.g. "Connection refused", "Operation timed out") means the
     // request failed and `response` is meaningless.
 
-    nb::class_<Wt::Http::Client, Wt::WObject>(m, "HttpClient")
+    auto client_cls = nb::class_<Wt::Http::Client, Wt::WObject>(http, "Client")
         .def(nb::new_([]() {
                  return std::make_shared<Wt::Http::Client>();
              }),
@@ -292,6 +302,13 @@ void register_http_client(nb::module_& m) {
              },
              "url"_a,
              "Parse `url` into its components. Returns None if invalid.");
+
+    // Re-attach the nested types as attributes on their natural parent
+    // so users can write `wt.Http.Message.Header(...)` and
+    // `wt.Http.Client.URL(...)` — matching Wt's C++ `Wt::Http::Message::
+    // Header` and `Wt::Http::Client::URL`.
+    message_cls.attr("Header") = header_cls;
+    client_cls.attr("URL")     = url_cls;
 }
 
 }  // namespace witty_for_python

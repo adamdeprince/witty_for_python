@@ -76,13 +76,26 @@ void register_resource(nb::module_& m) {
         .value("Attachment", Wt::ContentDisposition::Attachment)
         .value("Inline", Wt::ContentDisposition::Inline);
 
+    // Wt nests Request / Response / Message / Client / Method under a
+    // single `Wt::Http::` namespace. Mirror that as `witty_for_python.Http`
+    // — same pattern as `wt.Json` and `wt.chart`. Names inside the
+    // submodule match Wt 1:1, so Wt's C++ docs apply directly. This
+    // submodule is created here (in register_resource) because the
+    // server-side Request/Response are bound first; the client-side
+    // Message/Client are added inside the same submodule by
+    // register_http_client later.
+    nb::module_ http = m.def_submodule("Http",
+        "Wt::Http — HTTP types shared by WResource handlers (Request, "
+        "Response) and the outbound client (Message, Client, Method, "
+        "Header).");
+
     // ---- Wt::Http::Request: read-only view of an HTTP request ----
     //
     // Lifetime: valid only for the duration of WResource.handle_request.
     // The wrapper points at a stack-local C++ Request on the Wt worker
     // thread; do not store it past the call.
 
-    nb::class_<Wt::Http::Request>(m, "HttpRequest")
+    nb::class_<Wt::Http::Request>(http, "Request")
         .def_prop_ro("method", &Wt::Http::Request::method,
                      "HTTP method as a string ('GET', 'POST', 'PUT', ...).")
         .def_prop_ro("path", &Wt::Http::Request::path,
@@ -152,7 +165,7 @@ void register_resource(nb::module_& m) {
     // after that point Wt commits headers to the wire and addHeader
     // becomes a no-op.
 
-    nb::class_<Wt::Http::Response>(m, "HttpResponse")
+    nb::class_<Wt::Http::Response>(http, "Response")
         .def("set_status", &Wt::Http::Response::setStatus, "status"_a,
              "Set the HTTP status code (default 200).")
         .def("set_content_length",

@@ -20,6 +20,10 @@ chart = _ext.chart
 # Re-export Wt::Json as `witty_for_python.Json` (uppercase to mirror Wt's
 # namespace; the lowercase `json` would shadow Python's stdlib module).
 Json = _ext.Json
+# Wt::Http — HTTP types (Request / Response on the server side, Message /
+# Client / Method on the outbound side). Capital `Http` matches Wt's
+# namespace and avoids shadowing Python's stdlib `http`.
+Http = _ext.Http
 
 
 # Wt's static assets (themes, JS, CSS, icons) shipped alongside the extension.
@@ -100,13 +104,6 @@ from ._witty_for_python import (
     ValidationResultSignal,
     ValidationState,
     CallbackResource,
-    HttpClient,
-    HttpClientURL,
-    HttpHeader,
-    HttpMessage,
-    HttpMethod,
-    HttpRequest,
-    HttpResponse,
     WBootstrap2Theme,
     WBootstrap3Theme,
     WBootstrap5Theme,
@@ -403,13 +400,7 @@ __all__ = [
     "BorderWidth",
     "BrushStyle",
     "CallbackResource",
-    "HttpClient",
-    "HttpClientURL",
-    "HttpHeader",
-    "HttpMessage",
-    "HttpMethod",
-    "HttpRequest",
-    "HttpResponse",
+    "Http",
     "chart",
     "Connection",
     "ContentDisposition",

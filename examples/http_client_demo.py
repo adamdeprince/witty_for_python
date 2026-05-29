@@ -9,12 +9,13 @@ status, content-type, and body show up below.
 
 This demonstrates the *client-side* HTTP binding:
 
-  - `wt.HttpClient`: outbound async HTTP client (GET/POST/PUT/PATCH/DELETE).
-  - `wt.HttpMessage`: the request body you send AND the response object
+  - `wt.Http.Client`: outbound async HTTP client (GET/POST/PUT/PATCH/DELETE).
+  - `wt.Http.Message`: the request body you send AND the response object
     you read on completion.
 
 For the *server-side* counterpart (incoming requests to YOUR Wt app),
-see `examples/hello_with_api.py` which uses `wt.CallbackResource`.
+see `examples/hello_with_api.py` which uses `wt.CallbackResource` plus
+`wt.Http.Request` / `wt.Http.Response`.
 """
 
 from __future__ import annotations
@@ -26,13 +27,13 @@ import witty_for_python as wt
 
 def create_app(env: wt.WEnvironment) -> wt.WApplication:
     app = wt.WApplication(env)
-    app.title = "HttpClient demo"
+    app.title = "Http.Client demo"
     root = app.root
 
     root.add_widget("<h2>Outbound HTTP from inside Wt</h2>")
     root.add_widget(
         "<p>Type a URL and click Fetch. The request is issued through "
-        "<code>wt.HttpClient</code>; when the response arrives the UI "
+        "<code>wt.Http.Client</code>; when the response arrives the UI "
         "updates with status / content-type / body. Try "
         "<code>https://httpbin.org/get?hello=world</code> for a quick "
         "round-trip, or your own internal service.</p>"
@@ -52,9 +53,9 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     body_label = root.add_widget(wt.WText(""))
 
     # Keep the client alive across requests by stashing it on the app.
-    # The HttpClient instance pins its done callback (via the binding's
+    # The Http.Client instance pins its done callback (via the binding's
     # connection registry), so a fresh one per request would lose state.
-    client = wt.HttpClient()
+    client = wt.Http.Client()
     client.set_timeout_seconds(10)
     # Hold one ref on the Python side so the wrapper outlives this scope.
     app._client = client  # type: ignore[attr-defined]
@@ -74,7 +75,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
 
     fetch.clicked.connect(on_fetch)
 
-    def on_done(err: str, response: wt.HttpMessage) -> None:
+    def on_done(err: str, response: wt.Http.Message) -> None:
         if err:
             status_label.text = f"Error: {err}"
             return
@@ -87,7 +88,7 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
             body = body[:2000] + " …(truncated)"
         body_label.text = f"<pre>{body}</pre>"
         # The Wt event loop normally repaints after a slot returns, but
-        # the HttpClient done callback runs asynchronously (it's not the
+        # the Http.Client done callback runs asynchronously (it's not the
         # response to a user event), so we have to push the update.
         wt.WApplication.instance().trigger_update()
 
