@@ -40,6 +40,7 @@ import witty_for_python as wt
 
 HERE = Path(__file__).resolve().parent
 CSS_PATH = HERE / "witty_wt_slide_theme.css"
+FAVICON_PATH = HERE / "slides_favicon.png"
 REPO_URL = "https://github.com/adamdeprince/witty_for_python"
 
 # Slide-5's WTimer / model / chart need to outlive create_app's frame.
@@ -535,7 +536,29 @@ def main(argv: list[str]) -> int:
 
     server = wt.WServer()
     server.set_server_configuration(argv)
-    server.add_entry_point(wt.EntryPointType.Application, create_app)
+
+    # Favicon — the stride-align goblin PNG, copied into examples/ and
+    # tracked via git LFS. We mount it on the server as /favicon.ico,
+    # then pass that local path to add_entry_point so Wt emits a
+    # `<link rel="icon" href="/favicon.ico">` in the bootstrap HTML
+    # (browsers pick the favicon up before any JS runs).
+    # `add_entry_point`'s favicon arg must be a path on OUR server —
+    # Wt doesn't let you point straight at an external URL there.
+    favicon_path = ""
+    if FAVICON_PATH.is_file():
+        favicon = wt.WMemoryResource("image/png", FAVICON_PATH.read_bytes())
+        server.add_resource(favicon, "/favicon.ico")
+        favicon_path = "/favicon.ico"
+    else:
+        sys.stderr.write(
+            f"slides_favicon.png not found at {FAVICON_PATH} — "
+            "tab icon will be the browser default.\n"
+        )
+
+    server.add_entry_point(
+        wt.EntryPointType.Application, create_app,
+        "/", favicon_path,
+    )
 
     # Local CSS.
     css = wt.WMemoryResource("text/css", CSS_PATH.read_bytes())
