@@ -771,6 +771,17 @@ class WLink:
     @url.setter
     def url(self, arg: str, /) -> None: ...
 
+    @property
+    def internal_path(self) -> str: ...
+
+    @internal_path.setter
+    def internal_path(self, arg: str, /) -> None: ...
+
+def internal_path(path: str) -> WLink:
+    """
+    Construct a WLink that points to the given internal path (e.g. '/slide/3'). Clicking a WAnchor backed by this link fires WApplication.internal_path_changed instead of navigating away.
+    """
+
 class CallbackResource(WResource):
     def __init__(self, callback: Callable) -> None:
         """

@@ -1,12 +1,12 @@
 """A 5-page slide-sheet demo for witty_for_python.
 
-Each slide gets the `wfp-slides` family of CSS classes from
+Each slide uses the `wfp-slides` CSS classes from
 `witty_wt_slide_theme.css` (which lives next to this script — the
-demo serves it via WServer.add_resource). Navigation is two anchors
-sitting in the bottom-left and bottom-right corners of the slide
-footer; `prev` and `next` flip the WStackedWidget AND update the
-URL fragment (so browser back/forward + reloads land on the right
-slide).
+demo serves it via `WServer.add_resource`). Navigation is two
+buttons in the bottom-left and bottom-right corners; clicking them
+flips a `WStackedWidget` IN-PLACE — no URL change, no page reload,
+no second session. Wt's AJAX layer pushes the DOM diff over the
+existing session's websocket.
 
 Run with:
 
@@ -14,7 +14,7 @@ Run with:
 
 then open http://localhost:8080.
 
-(Or, if you have witty_for_python installed but not the source tree:
+(If you have witty_for_python installed but not the source tree:
 copy `examples/slides.py` + `examples/witty_wt_slide_theme.css` to
 the same directory and `python slides.py --docroot . ...`. The CSS
 lives next to the script; `examples/` is intentionally NOT shipped
@@ -140,47 +140,56 @@ SLIDES: list[tuple[str, callable]] = [
 
 # ---- Wt app --------------------------------------------------------------
 
-def _build_slide(index: int, total: int) -> wt.WContainerWidget:
+def _build_slide(
+    index: int,
+    total: int,
+    on_prev: callable,
+    on_next: callable,
+) -> wt.WContainerWidget:
     """Construct one slide widget — header, body via the slide content
-    callable, footer with prev/next nav."""
+    callable, footer with prev/next buttons whose clicked signals
+    flip the parent WStackedWidget via the passed-in callbacks."""
     slide = wt.WContainerWidget()
     slide.style_class = "wfp-slide"
 
-    # Header: just an empty container so the grid template
-    # (auto/1fr/auto) reserves the row even when the slide doesn't
-    # explicitly fill it.
+    # Header: empty container so the grid template (auto/1fr/auto)
+    # reserves the row even when the slide doesn't explicitly fill it.
     header = slide.add_widget(wt.WContainerWidget())
     header.style_class = "wfp-slide-header"
 
     # Body — the slide's actual content.
     body = slide.add_widget(wt.WContainerWidget())
     body.style_class = "wfp-slide-body"
-    name, builder = SLIDES[index]
+    _, builder = SLIDES[index]
     builder(body)
 
-    # Footer with prev/next anchors at the bottom corners. The CSS uses
+    # Footer with prev/next buttons at the bottom corners. The CSS uses
     # `display: flex; justify-content: space-between` on .wfp-slide-footer,
     # so a single prev on the left + single next on the right naturally
     # pin to the corners.
     footer = slide.add_widget(wt.WContainerWidget())
     footer.style_class = "wfp-slide-footer"
 
-    prev = footer.add_widget(wt.WAnchor(
-        wt.WLink(f"/{index - 1}" if index > 0 else "/0"),
-        "← prev" if index > 0 else " "
-    ))
+    # In-app navigation: the buttons emit Wt's `clicked` signal, which
+    # we route to the deck-flipping callback. No URL navigation, no
+    # second session — Wt's AJAX layer pushes the DOM diff to the
+    # existing session over its websocket. WPushButton is used (not
+    # WAnchor) because anchors imply a navigation, and we want pure
+    # in-app click handlers.
+    prev = footer.add_widget(wt.WPushButton("← prev"))
+    prev.style_class = "wfp-nav-prev"
     if index == 0:
         prev.hidden = True
+    prev.clicked.connect(on_prev)
 
     counter = footer.add_widget(wt.WText(f"{index + 1} / {total}"))
     counter.style_class = "wfp-muted"
 
-    next_ = footer.add_widget(wt.WAnchor(
-        wt.WLink(f"/{index + 1}" if index < total - 1 else f"/{index}"),
-        "next →" if index < total - 1 else " "
-    ))
+    next_ = footer.add_widget(wt.WPushButton("next →"))
+    next_.style_class = "wfp-nav-next"
     if index == total - 1:
         next_.hidden = True
+    next_.clicked.connect(on_next)
 
     return slide
 
@@ -206,27 +215,23 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     stage.style_class = "wfp-slide-stage"
 
     deck = stage.add_widget(wt.WStackedWidget())
-    pinned_slides: list[wt.WContainerWidget] = []
-    for i in range(len(SLIDES)):
-        slide = _build_slide(i, len(SLIDES))
-        pinned_slides.append(deck.add_widget(slide))
+    total = len(SLIDES)
 
-    # URL ↔ stack-index. Calling set_internal_path with emit_change=False
-    # at startup means the initial /N from a deep link lands on the
-    # right slide without re-firing the change signal.
-    def _go(path: str) -> None:
-        # path looks like "/3" or "" for the root.
-        try:
-            idx = int(path.lstrip("/")) if path else 0
-        except ValueError:
-            idx = 0
-        idx = max(0, min(idx, len(SLIDES) - 1))
-        deck.current_index = idx
+    # Build each slide. We pass each one a pair of callbacks that
+    # know which direction to flip the stack — capturing the slide's
+    # index in the closure avoids relying on `deck.current_index`
+    # being correct when the click fires (e.g., if the user
+    # rapid-clicks past a slide).
+    def make_handlers(i: int) -> tuple[callable, callable]:
+        def prev() -> None:
+            deck.current_index = max(0, i - 1)
+        def nxt() -> None:
+            deck.current_index = min(total - 1, i + 1)
+        return prev, nxt
 
-    # Honour any deep link in the initial URL.
-    _go(env.internal_path)
-    # And follow browser back/forward + anchor clicks afterwards.
-    app.on_internal_path_changed(_go)
+    for i in range(total):
+        on_prev, on_next = make_handlers(i)
+        deck.add_widget(_build_slide(i, total, on_prev, on_next))
 
     return app
 
@@ -271,8 +276,9 @@ def main(argv: list[str]) -> int:
     print(
         f"\n  Slide deck ready.\n"
         f"  Open:   http://{display_host}:{port}/\n"
-        f"  Deck:   {len(SLIDES)} slides; ←/→ links in the footer corners.\n"
-        f"  Direct: http://{display_host}:{port}/#/3   (deep-link to slide 4)\n",
+        f"  Deck:   {len(SLIDES)} slides; ←/→ buttons in the footer corners.\n"
+        f"  Each button click flips the WStackedWidget in place — no\n"
+        f"  page reload, no new session.\n",
         flush=True,
     )
 

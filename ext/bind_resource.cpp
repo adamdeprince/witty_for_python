@@ -310,7 +310,35 @@ void register_resource(nb::module_& m) {
              "resource"_a)
         .def_prop_rw("url",
             [](const Wt::WLink& l) { return l.url(); },
-            [](Wt::WLink& l, const std::string& u) { l.setUrl(u); });
+            [](Wt::WLink& l, const std::string& u) { l.setUrl(u); })
+        // Mark the link as an internal-path link instead of a regular
+        // URL. WAnchor with an internal-path WLink does AJAX-style
+        // navigation (updates the URL fragment, fires
+        // WApplication.internal_path_changed) — clicking does NOT
+        // reload the page. Without this, WLink('/1') is treated as an
+        // external URL and the browser navigates away from the session.
+        .def_prop_rw("internal_path",
+            [](const Wt::WLink& l) { return l.internalPath(); },
+            [](Wt::WLink& l, const Wt::WString& path) {
+                l.setInternalPath(path);
+            });
+
+    // Module-level factory: a one-liner for building an internal-path
+    // WLink without the two-step `WLink(); link.internal_path = ...`
+    // dance. `wt.internal_path('/2')` is the natural way to wire
+    // WAnchor / WImage / WPushButton to slide-style URL-fragment
+    // navigation.
+    m.def("internal_path",
+          [](const Wt::WString& path) {
+              Wt::WLink link;
+              link.setInternalPath(path);
+              return link;
+          },
+          "path"_a,
+          "Construct a WLink that points to the given internal path "
+          "(e.g. '/slide/3'). Clicking a WAnchor backed by this link "
+          "fires WApplication.internal_path_changed instead of "
+          "navigating away.");
 
     // ---- CallbackResource: dynamic HTTP endpoint backed by a callable ----
     //
