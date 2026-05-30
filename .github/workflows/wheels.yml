@@ -1,0 +1,102 @@
+name: Build x86_64 abi3 wheel
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: "Upload to test.pypi.org"
+        required: false
+        default: "false"
+
+jobs:
+  build:
+    name: Build cp312-abi3 wheel
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout (with extern/wt + extern/tinymce submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up QEMU (not needed for x86_64 but keeps the action shape
+              consistent if we later add aarch64)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install cibuildwheel
+        # Pin a known-good version; cibuildwheel changes its config schema
+        # occasionally and we don't want a silent break.
+        run: pip install "cibuildwheel==2.21.3"
+
+      - name: Build the abi3 wheel
+        run: python -m cibuildwheel --output-dir wheelhouse
+        env:
+          # The whole build runs inside cibuildwheel's manylinux container;
+          # before-all + environment in pyproject.toml drive it. We don't
+          # need ccache here — each tag bump rebuilds from scratch.
+          CIBW_CONTAINER_ENGINE: docker
+
+      - name: Show built wheel
+        run: |
+          ls -la wheelhouse/
+          # The abi3 wheel filename should be cp312-abi3-manylinux_2_28_x86_64.
+          # That filename is what tells pip "install on cp312, cp313, cp314".
+          python -c "
+          from pathlib import Path
+          import sys
+          wheels = sorted(Path('wheelhouse').glob('*.whl'))
+          assert len(wheels) == 1, f'expected 1 wheel, found {len(wheels)}: {wheels}'
+          name = wheels[0].name
+          assert 'cp312-abi3' in name, f'wheel not tagged cp312-abi3: {name}'
+          assert 'x86_64' in name, f'wheel not x86_64: {name}'
+          assert 'manylinux' in name, f'wheel not manylinux: {name}'
+          print(f'OK: {name}')
+          "
+
+      - name: Quick install + import test on cp312 / cp313 / cp314
+        run: |
+          set -e
+          WHEEL=$(ls wheelhouse/*.whl)
+          for PYV in 3.12 3.13 3.14; do
+            echo "== Python $PYV =="
+            if ! command -v "python$PYV" >/dev/null; then
+              # actions/setup-python only set up cp312. For the other
+              # versions, use Docker to confirm the abi3 wheel really
+              # installs on them.
+              docker run --rm -v "$PWD/wheelhouse:/wheels" "python:$PYV-slim" \
+                bash -c "pip install /wheels/*.whl && python -c 'import witty_for_python; print(witty_for_python.__version__)'"
+            else
+              "python$PYV" -m pip install "$WHEEL"
+              "python$PYV" -c "import witty_for_python; print(witty_for_python.__version__)"
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-cp312-abi3-x86_64
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+      # Upload to TestPyPI on tag pushes (or manual dispatch with upload=true).
+      # Real PyPI is not wired up here — release once we're past pre-alpha.
+      - name: Upload to TestPyPI
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload == 'true')
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
+        run: |
+          if [ -z "$TWINE_PASSWORD" ]; then
+            echo "TEST_PYPI_TOKEN secret not set; skipping upload"
+            exit 0
+          fi
+          pip install twine
+          twine upload --repository-url https://test.pypi.org/legacy/ wheelhouse/*.whl

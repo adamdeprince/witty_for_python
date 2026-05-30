@@ -7,7 +7,7 @@ name = "witty_for_python"
 version = "0.1.0"
 description = "Python bindings for the Wt (Web Toolkit) C++ library, generated with nanobind. Built wheels bundle Wt (GPLv2), TinyMCE 6.8.4 (MIT), and link against permissively-licensed system libraries (Boost, libharu, libpng, zlib) — see THIRD_PARTY_LICENSES.md for details."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [{ name = "Adam DePrince" }]
 # Project license. Built wheels also redistribute Wt (vendored at extern/wt
 # as a git submodule, GPLv2) and TinyMCE 6.8.4 (vendored at extern/tinymce,
@@ -20,10 +20,10 @@ classifiers = [
   "Intended Audience :: Developers",
   "Programming Language :: C++",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Software Development :: Libraries",
 ]
@@ -51,8 +51,71 @@ build-dir = "build/{wheel_tag}"
 cmake.build-type = "Release"
 cmake.version = ">=3.26"
 wheel.packages = ["src/witty_for_python"]
+# Tag the wheel as cp312-abi3. nanobind's STABLE_ABI mode + scikit-build's
+# py-api=cp312 produces a single .so that loads on CPython 3.12 / 3.13 /
+# 3.14 (and any future minor with stable-ABI compatibility). We can't go
+# below 3.12 because Py_LIMITED_API=0x030C0000 is the floor nanobind 2.x
+# uses for its stable ABI. Free-threaded builds (the `t` ABI) are NOT
+# stable-ABI compatible and have to be built per Python minor; the
+# nanobind_add_module call in CMakeLists.txt picks FREE_THREADED for
+# those automatically.
+wheel.py-api = "cp312"
 # Re-run CMake configure when these change.
 cmake.args = []
 
 [tool.scikit-build.cmake.define]
 CMAKE_CXX_STANDARD = "23"
+
+# ---- cibuildwheel ----
+#
+# `cibw` runs the wheel build inside a manylinux container with the
+# right toolchain + auditwheel post-processing. For abi3 we only need
+# to build ONE wheel — it covers cp312, cp313, cp314.
+
+[tool.cibuildwheel]
+# Only the abi3 build (cp312 is enough; py-api=cp312 marks the wheel).
+build = "cp312-*"
+# Skip 32-bit + PyPy + musllinux. x86_64 manylinux is the target.
+skip = "*-musllinux_* *-win32 *-manylinux_i686 pp*"
+archs = ["x86_64"]
+build-frontend = "build"
+build-verbosity = 1
+# Bundled system libs we link: Boost (filesystem/system/thread/program_options),
+# zlib, libpng, libharu. yum is the package manager inside manylinux_2_28.
+manylinux-x86_64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.linux]
+before-all = [
+  # Toolchain
+  "yum install -y gcc-toolset-13 ninja-build",
+  # Build deps for Wt
+  "yum install -y boost-devel zlib-devel libpng-devel libharu-devel",
+  # TinyMCE needs Node + yarn (Corepack)
+  "curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -",
+  "yum install -y nodejs",
+  "corepack enable yarn",
+]
+
+[tool.cibuildwheel.linux.environment]
+CC = "/opt/rh/gcc-toolset-13/root/usr/bin/gcc"
+CXX = "/opt/rh/gcc-toolset-13/root/usr/bin/g++"
+PATH = "/opt/rh/gcc-toolset-13/root/usr/bin:$PATH"
+
+# auditwheel default repair gets confused by Wt's vendored libwt.so /
+# libwthttp.so under <pkg>/_libs/. The wheel ships them itself with an
+# $ORIGIN/_libs RPATH, so we explicitly tell auditwheel not to re-bundle
+# them.
+[tool.cibuildwheel.linux.repair-wheel-command]
+linux = """
+auditwheel repair \
+  --exclude libwt.so.4 \
+  --exclude libwt.so.4.13.2 \
+  --exclude libwthttp.so.4 \
+  --exclude libwthttp.so.4.13.2 \
+  -w {dest_dir} \
+  {wheel}
+"""
+
+# Quick smoke test inside the wheel — import + version.
+# Full pytest needs a docroot and is run separately on the CI host.
+test-command = "python -c 'import witty_for_python; print(witty_for_python.__version__)'"
