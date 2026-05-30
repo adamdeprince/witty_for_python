@@ -55,8 +55,20 @@ void register_server(nb::module_& m) {
                      nb::gil_scoped_acquire gil;
                      nb::object env_py = nb::cast(env, nb::rv_policy::reference);
                      nb::object result = factory_obj(env_py);
-                     return nb::cast<std::unique_ptr<Wt::WApplication>>(
-                         std::move(result));
+                     // Take the unique_ptr (this relinquishes the Python
+                     // wrapper into state_relinquished), then re-arm
+                     // the wrapper as a non-owning alias. Without the
+                     // re-arm, any later access to the original `app`
+                     // reference — e.g. a closure inside create_app
+                     // calling `app.trigger_update()` from a WTimer
+                     // slot — would raise on the wrapper's relinquished
+                     // state. Same pattern as add_widget / add_marker
+                     // (see docs/binding_design.md §4.2).
+                     auto ptr = nb::cast<std::unique_ptr<Wt::WApplication>>(
+                         result);
+                     nb::inst_set_state(result, /*ready*/ true,
+                                        /*destruct*/ false);
+                     return ptr;
                  };
                  self.addEntryPoint(type, std::move(wrapped), path, favicon);
              },
