@@ -1,4 +1,5 @@
 #include "common.hpp"
+#include "signal_helpers.hpp"
 
 #include <Wt/WObject.h>
 #include <Wt/WWidget.h>
@@ -116,6 +117,20 @@ void register_application(nb::module_& m) {
         .def("set_internal_path", &Wt::WApplication::setInternalPath,
              "path"_a, "emit_change"_a = false)
         .def_prop_ro("internal_path", &Wt::WApplication::internalPath)
+        // `internal_path_changed` is a Wt::Signal<std::string>, not the
+        // Signal<WString> we expose as `StringSignal`. Rather than bind
+        // a second similarly-named Signal class, route connect through
+        // the existing py_connect machinery via this thin shim — same
+        // pattern as HttpClient.on_body_data_received.
+        .def("on_internal_path_changed",
+             [](Wt::WApplication& self, nb::callable cb) {
+                 return py_connect<Wt::Signal<std::string>, std::string>(
+                     self.internalPathChanged(), std::move(cb));
+             },
+             "callback"_a,
+             "Connect `callback(path: str)` to fire when the URL "
+             "fragment changes (browser back/forward, set_internal_path "
+             "with emit_change=True). Returns a Connection.")
         .def_prop_ro("session_id", &Wt::WApplication::sessionId)
         .def("redirect",
             [](Wt::WApplication& a, const std::string& url) { a.redirect(url); })
@@ -123,6 +138,16 @@ void register_application(nb::module_& m) {
         .def("trigger_update", &Wt::WApplication::triggerUpdate,
              "Force a server-initiated update push to the connected client. "
              "Combine with WServer.post() for cross-thread updates.")
+        .def("use_style_sheet",
+             [](Wt::WApplication& self, const Wt::WLink& link,
+                const std::string& media) {
+                 self.useStyleSheet(link, media);
+             },
+             "link"_a, "media"_a = std::string("all"),
+             "Add an external stylesheet. `link` is a WLink (URL string or "
+             "a WResource handle, e.g. one mounted via WServer.add_resource). "
+             "`media` is the CSS media query (default 'all'). The link tag "
+             "is added to the page's <head>.")
         .def("defer_rendering", &Wt::WApplication::deferRendering,
              "Suspend rendering of the current event response until "
              "resume_rendering() is called. Use this when an async "

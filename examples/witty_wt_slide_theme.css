@@ -1,0 +1,812 @@
+/*
+  witty-for-python / Wt slide theme
+  Scope this by putting `wfp-slides` on <body> or on your root WContainerWidget.
+
+  Design goal: stock Wt widgets, clean internal-tech-talk slides, no PowerPoint cult robes.
+  Swap --wfp-accent for an approved internal brand color if needed.
+*/
+
+body.wfp-slides,
+.wfp-slides {
+  --wfp-bg: #f2f3f5;
+  --wfp-slide-bg: #ffffff;
+  --wfp-fg: #171717;
+  --wfp-muted: #5f6368;
+  --wfp-rule: #d8dee4;
+  --wfp-soft: #f6f8fa;
+  --wfp-soft-2: #eef1f4;
+  --wfp-accent: #b00020;
+  --wfp-accent-dark: #7f0016;
+  --wfp-accent-soft: #fff0f3;
+  --wfp-good: #daf7da;
+  --wfp-bad: #f7dada;
+  --wfp-warn: #fff5cc;
+  --wfp-code-bg: #f6f8fa;
+  --wfp-shadow: 0 16px 60px rgba(0, 0, 0, 0.18);
+
+  color: var(--wfp-fg);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+body.wfp-slides {
+  margin: 0;
+  background: var(--wfp-bg);
+}
+
+.wfp-slides *,
+.wfp-slides *::before,
+.wfp-slides *::after {
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   Slide shell
+   -------------------------------------------------------------------------- */
+
+.wfp-slides .Wt-domRoot {
+  min-height: 100vh;
+}
+
+.wfp-slide-stage {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.wfp-slide {
+  width: min(1280px, calc(100vw - 64px));
+  aspect-ratio: 16 / 9;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0;
+  overflow: hidden;
+
+  background: var(--wfp-slide-bg);
+  border: 1px solid var(--wfp-rule);
+  border-radius: 14px;
+  box-shadow: var(--wfp-shadow);
+  padding: 48px 72px 40px;
+}
+
+.wfp-slide-header {
+  border-bottom: 2px solid var(--wfp-rule);
+  padding-bottom: 18px;
+  margin-bottom: 28px;
+}
+
+.wfp-slide-title {
+  margin: 0;
+  font-size: clamp(36px, 4vw, 54px);
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.wfp-slide-subtitle {
+  margin-top: 10px;
+  color: var(--wfp-muted);
+  font-size: clamp(18px, 1.8vw, 24px);
+  line-height: 1.3;
+}
+
+.wfp-slide-body {
+  min-height: 0;
+  font-size: clamp(22px, 2.2vw, 30px);
+  line-height: 1.35;
+}
+
+.wfp-slide-body > *:first-child {
+  margin-top: 0;
+}
+
+.wfp-slide-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.wfp-slide-footer {
+  border-top: 1px solid var(--wfp-rule);
+  padding-top: 12px;
+  margin-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  color: var(--wfp-muted);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.wfp-kicker {
+  color: var(--wfp-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-size: 0.55em;
+  font-weight: 700;
+  margin-bottom: 0.9em;
+}
+
+.wfp-muted {
+  color: var(--wfp-muted);
+}
+
+.wfp-accent {
+  color: var(--wfp-accent);
+}
+
+.wfp-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 42px;
+  align-items: start;
+}
+
+.wfp-three-col {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  align-items: start;
+}
+
+.wfp-card {
+  border: 1px solid var(--wfp-rule);
+  border-radius: 12px;
+  padding: 20px 24px;
+  background: var(--wfp-soft);
+}
+
+.wfp-card-title {
+  font-weight: 700;
+  font-size: 0.8em;
+  margin-bottom: 0.45em;
+}
+
+.wfp-big-number {
+  font-size: clamp(56px, 6vw, 88px);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.wfp-caption {
+  color: var(--wfp-muted);
+  font-size: 0.62em;
+  line-height: 1.3;
+  margin-top: 0.55em;
+}
+
+/* Lists that look like slides, not wiki pages. */
+.wfp-slide-body ul,
+.wfp-slide-body ol {
+  margin: 0.2em 0 0;
+  padding-left: 1.2em;
+}
+
+.wfp-slide-body li {
+  margin: 0.34em 0;
+}
+
+/* Links / anchors, including WAnchor output. */
+.wfp-slides a {
+  color: var(--wfp-accent-dark);
+  text-decoration-color: color-mix(in srgb, var(--wfp-accent) 45%, transparent);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.15em;
+}
+
+.wfp-slides a:hover {
+  color: var(--wfp-accent);
+}
+
+/* --------------------------------------------------------------------------
+   Code / benchmark blocks. Add these classes to WText/WContainerWidget.
+   -------------------------------------------------------------------------- */
+
+.wfp-code,
+.wfp-slides pre {
+  display: block;
+  margin: 0.5em 0;
+  padding: 18px 22px;
+  overflow: hidden;
+  border: 1px solid var(--wfp-rule);
+  border-radius: 10px;
+  background: var(--wfp-code-bg);
+  font-family: "DejaVu Sans Mono", "Consolas", "Liberation Mono", monospace;
+  font-size: clamp(16px, 1.55vw, 22px);
+  line-height: 1.27;
+  white-space: pre;
+}
+
+.wfp-code-tight {
+  font-size: clamp(14px, 1.25vw, 18px);
+  line-height: 1.22;
+}
+
+.wfp-slides code {
+  font-family: "DejaVu Sans Mono", "Consolas", "Liberation Mono", monospace;
+  background: var(--wfp-code-bg);
+  border: 1px solid var(--wfp-rule);
+  border-radius: 0.28em;
+  padding: 0.05em 0.25em;
+}
+
+/* --------------------------------------------------------------------------
+   Stock Wt buttons / WPushButton
+   Wt commonly uses Wt-btn and Wt-btn-default in the stock theme.
+   -------------------------------------------------------------------------- */
+
+.wfp-slides .Wt-btn,
+.wfp-slides button:not(.Wt-wrap),
+.wfp-slides input[type="button"],
+.wfp-slides input[type="submit"],
+.wfp-slides input[type="reset"] {
+  appearance: none;
+  border: 1px solid var(--wfp-rule);
+  border-radius: 9px;
+  background: var(--wfp-slide-bg);
+  color: var(--wfp-fg);
+  font: inherit;
+  font-size: 0.72em;
+  line-height: 1.1;
+  padding: 0.48em 0.8em;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.wfp-slides .Wt-btn:hover,
+.wfp-slides button:not(.Wt-wrap):hover,
+.wfp-slides input[type="button"]:hover,
+.wfp-slides input[type="submit"]:hover,
+.wfp-slides input[type="reset"]:hover {
+  border-color: color-mix(in srgb, var(--wfp-accent) 55%, var(--wfp-rule));
+  background: var(--wfp-accent-soft);
+}
+
+.wfp-slides .Wt-btn:focus-visible,
+.wfp-slides button:not(.Wt-wrap):focus-visible,
+.wfp-slides input:focus-visible,
+.wfp-slides textarea:focus-visible,
+.wfp-slides select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--wfp-accent) 32%, transparent);
+  outline-offset: 2px;
+}
+
+.wfp-slides .Wt-btn.Wt-btn-default {
+  font-weight: 700;
+}
+
+/* Add wfp-primary to a WPushButton when you want the red button. */
+.wfp-slides .wfp-primary,
+.wfp-slides .Wt-btn.wfp-primary {
+  border-color: var(--wfp-accent-dark);
+  background: var(--wfp-accent);
+  color: #ffffff;
+}
+
+.wfp-slides .wfp-primary:hover,
+.wfp-slides .Wt-btn.wfp-primary:hover {
+  background: var(--wfp-accent-dark);
+}
+
+.wfp-slides .Wt-disabled,
+.wfp-slides [disabled] {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+}
+
+/* --------------------------------------------------------------------------
+   Stock Wt form widgets: WLineEdit, WTextArea, WComboBox, spin/date/time edits
+   -------------------------------------------------------------------------- */
+
+.wfp-slides input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+.wfp-slides textarea,
+.wfp-slides select {
+  max-width: 100%;
+  border: 1px solid var(--wfp-rule);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--wfp-fg);
+  font: inherit;
+  font-size: 0.72em;
+  line-height: 1.25;
+  padding: 0.42em 0.55em;
+}
+
+.wfp-slides textarea {
+  min-height: 5.5em;
+  resize: vertical;
+}
+
+.wfp-slides .Wt-edit-emptyText {
+  color: var(--wfp-muted);
+  font-style: italic;
+}
+
+.wfp-slides .Wt-invalid {
+  background-color: var(--wfp-bad) !important;
+  border-color: #c62828 !important;
+}
+
+.wfp-slides .Wt-valid {
+  background-color: var(--wfp-good) !important;
+  border-color: #2e7d32 !important;
+}
+
+.wfp-slides .Wt-dateedit,
+.wfp-slides .Wt-timeedit,
+.wfp-slides .Wt-spinbox,
+.wfp-slides .Wt-suggest-dropdown {
+  background-position: right 0.45em center;
+}
+
+/* --------------------------------------------------------------------------
+   WPanel / WDialog / WMessageBox
+   -------------------------------------------------------------------------- */
+
+.wfp-slides .Wt-panel,
+.wfp-slides .Wt-dialog {
+  border: 1px solid var(--wfp-rule);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.wfp-slides .Wt-panel .titlebar,
+.wfp-slides .Wt-dialog .titlebar {
+  padding: 12px 16px;
+  background: var(--wfp-soft);
+  color: var(--wfp-fg);
+  border-bottom: 1px solid var(--wfp-rule);
+  font-weight: 700;
+}
+
+.wfp-slides .Wt-panel .titlebar h4,
+.wfp-slides .Wt-dialog .titlebar h4 {
+  margin: 0;
+  font-size: 1em;
+  line-height: 1.2;
+}
+
+.wfp-slides .Wt-panel .body,
+.wfp-slides .Wt-dialog .body,
+.wfp-slides .Wt-dialog .footer {
+  padding: 16px 18px;
+}
+
+.wfp-slides .Wt-dialog .footer {
+  text-align: right;
+  border-top: 1px solid var(--wfp-rule);
+  background: var(--wfp-soft);
+}
+
+.wfp-slides .Wt-dialogcover {
+  background: #000000;
+}
+
+.wfp-slides .Wt-dialogcover.in {
+  opacity: 0.42;
+}
+
+.wfp-slides .Wt-collapse-button,
+.wfp-slides .Wt-closeicon,
+.wfp-slides .Wt-dialog .closeicon,
+.wfp-slides .Wt-tabs .closeicon {
+  opacity: 0.7;
+}
+
+.wfp-slides .Wt-collapse-button:hover,
+.wfp-slides .Wt-closeicon:hover,
+.wfp-slides .Wt-dialog .closeicon:hover,
+.wfp-slides .Wt-tabs .closeicon:hover {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   WPopupMenu / WSuggestionPopup
+   -------------------------------------------------------------------------- */
+
+.wfp-slides .Wt-popupmenu,
+.wfp-slides .Wt-suggest {
+  border: 1px solid var(--wfp-rule);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--wfp-fg);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  list-style: none;
+}
+
+.wfp-slides .Wt-popupmenu li a,
+.wfp-slides .Wt-suggest li {
+  display: block;
+  border-radius: 7px;
+  padding: 7px 10px;
+  color: var(--wfp-fg);
+  text-decoration: none;
+}
+
+.wfp-slides .Wt-popupmenu .active,
+.wfp-slides .Wt-suggest .active {
+  background: var(--wfp-accent-soft);
+  color: var(--wfp-accent-dark);
+}
+
+.wfp-slides .Wt-popupmenu .Wt-separator {
+  border-top: 1px solid var(--wfp-rule);
+  border-bottom: 0;
+  margin: 6px 4px;
+}
+
+.wfp-slides .Wt-popupmenu .Wt-sectheader,
+.wfp-slides .Wt-popupmenu .Wt-sectheader.active {
+  color: var(--wfp-muted);
+  font-size: 0.8em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* --------------------------------------------------------------------------
+   WTabWidget / WMenu in tab mode
+   Overrides the stock image-tab look with flat tabs.
+   -------------------------------------------------------------------------- */
+
+.wfp-slides .Wt-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 0;
+  overflow: visible;
+  list-style: none;
+  background: none;
+  border-bottom: 1px solid var(--wfp-rule);
+}
+
+.wfp-slides .Wt-tabs li {
+  float: none;
+  display: block;
+  border: 1px solid var(--wfp-rule);
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  background: var(--wfp-soft);
+  color: var(--wfp-fg);
+  font-size: 0.72em;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wfp-slides .Wt-tabs a {
+  display: block;
+  padding: 9px 13px;
+  color: inherit;
+  background: none;
+  border: 0;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.wfp-slides .Wt-tabs .itemselected,
+.wfp-slides .Wt-tabs .Wt-selected {
+  background: #ffffff;
+  border-color: var(--wfp-accent);
+  color: var(--wfp-accent-dark);
+  box-shadow: inset 0 3px 0 var(--wfp-accent);
+}
+
+.wfp-slides .Wt-tabs .itemselected a {
+  background: none;
+}
+
+/* For a plain WMenu, add class wfp-menu to the WMenu/WContainerWidget. */
+.wfp-slides .wfp-menu .item,
+.wfp-slides .wfp-menu .itemselected {
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.wfp-slides .wfp-menu .itemselected,
+.wfp-slides .wfp-menu .Wt-selected {
+  background: var(--wfp-accent-soft);
+  color: var(--wfp-accent-dark);
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   WProgressBar
+   -------------------------------------------------------------------------- */
+
+.wfp-slides .Wt-progressbar {
+  width: 100%;
+  min-width: 220px;
+  height: 1.05em;
+  line-height: 1.05em;
+  border: 1px solid var(--wfp-rule);
+  border-radius: 999px;
+  background: var(--wfp-soft-2);
+  color: var(--wfp-fg);
+  overflow: hidden;
+}
+
+.wfp-slides .Wt-progressbar .Wt-pgb-bar {
+  background: var(--wfp-accent);
+}
+
+.wfp-slides .Wt-progressbar .Wt-pgb-label {
+  color: var(--wfp-fg);
+  font-size: 0.68em;
+  font-weight: 700;
+  top: 0;
+}
+
+/* --------------------------------------------------------------------------
+   WTable / WTableView / WTreeView / WTree
+   For WTable, add wfp-table to the WTable if you do not want broad table rules.
+   -------------------------------------------------------------------------- */
+
+.wfp-slides .wfp-table,
+.wfp-slides table.wfp-table,
+.wfp-slides .Wt-itemview {
+  border: 1px solid var(--wfp-rule);
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.wfp-slides table.wfp-table,
+.wfp-slides .wfp-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.64em;
+  line-height: 1.35;
+}
+
+.wfp-slides table.wfp-table th,
+.wfp-slides table.wfp-table td,
+.wfp-slides .wfp-table table th,
+.wfp-slides .wfp-table table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--wfp-rule);
+  text-align: left;
+}
+
+.wfp-slides table.wfp-table th,
+.wfp-slides .wfp-table table th {
+  background: var(--wfp-soft);
+  color: var(--wfp-fg);
+  font-weight: 700;
+}
+
+.wfp-slides table.wfp-table tr:last-child td,
+.wfp-slides .wfp-table table tr:last-child td {
+  border-bottom: 0;
+}
+
+.wfp-slides .Wt-itemview {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.wfp-slides .Wt-itemview .Wt-headerdiv,
+.wfp-slides .Wt-itemview .Wt-headerdiv .Wt-tv-rowc,
+.wfp-slides .Wt-itemview th,
+.wfp-slides .Wt-treetable div.Wt-header {
+  background: var(--wfp-soft);
+  color: var(--wfp-fg);
+  border-bottom: 1px solid var(--wfp-rule);
+  font-weight: 700;
+}
+
+.wfp-slides .Wt-itemview .Wt-header .Wt-label {
+  padding-inline: 8px;
+  font-weight: 700;
+}
+
+.wfp-slides .Wt-tableview .Wt-tv-contents .Wt-tv-c,
+.wfp-slides .Wt-plaintable .Wt-tv-c,
+.wfp-slides .Wt-treeview .Wt-tv-row .Wt-tv-c,
+.wfp-slides .Wt-treeview .Wt-tv-c {
+  padding: 6px 10px;
+  border-color: var(--wfp-rule);
+}
+
+.wfp-slides .Wt-itemview .Wt-selected,
+.wfp-slides .Wt-tree .Wt-selected {
+  background-color: var(--wfp-warn);
+}
+
+.wfp-slides .Wt-itemview .Wt-drop-site {
+  background-color: var(--wfp-accent-soft);
+  outline: 2px dotted var(--wfp-accent-dark);
+}
+
+.wfp-slides .Wt-itemview .Wt-tv-rh:hover {
+  background-color: color-mix(in srgb, var(--wfp-accent) 15%, var(--wfp-soft));
+}
+
+.wfp-slides .Wt-tree,
+.wfp-slides .Wt-treeview {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.62em;
+}
+
+.wfp-slides .Wt-tree .Wt-label {
+  padding: 2px 5px;
+  border-radius: 5px;
+  line-height: 1.5;
+}
+
+.wfp-slides .Wt-tree .Wt-label:hover {
+  background: var(--wfp-soft);
+}
+
+/* --------------------------------------------------------------------------
+   WCalendar / date picker
+   -------------------------------------------------------------------------- */
+
+.wfp-slides .Wt-cal table {
+  border: 1px solid var(--wfp-rule);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.62em;
+}
+
+.wfp-slides .Wt-cal caption,
+.wfp-slides .Wt-datepicker {
+  background: var(--wfp-soft);
+}
+
+.wfp-slides .Wt-cal th,
+.wfp-slides .Wt-cal td {
+  border-color: var(--wfp-rule);
+}
+
+.wfp-slides .Wt-cal-sel {
+  background-color: var(--wfp-warn);
+}
+
+.wfp-slides .Wt-cal-now {
+  background: var(--wfp-accent-soft);
+  color: var(--wfp-accent-dark);
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   WFileDropWidget / WFileUpload
+   -------------------------------------------------------------------------- */
+
+.wfp-slides .Wt-filedropzone {
+  width: min(100%, 420px);
+  height: 180px;
+  display: grid;
+  place-items: center;
+  border: 3px dashed var(--wfp-rule);
+  border-radius: 14px;
+  background: var(--wfp-soft);
+  color: var(--wfp-muted);
+  font-weight: 700;
+}
+
+.wfp-slides .Wt-filedropzone.Wt-dropzone-hover,
+.wfp-slides .Wt-filedropzone.Wt-dropzone-indication {
+  border-color: var(--wfp-accent);
+  background: var(--wfp-accent-soft);
+  color: var(--wfp-accent-dark);
+}
+
+/* --------------------------------------------------------------------------
+   Utility classes for talk diagrams
+   -------------------------------------------------------------------------- */
+
+.wfp-flow {
+  display: grid;
+  gap: 12px;
+}
+
+.wfp-flow-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.wfp-node {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 10px 16px;
+  border: 1px solid var(--wfp-rule);
+  border-radius: 10px;
+  background: #ffffff;
+  font-weight: 700;
+  font-size: 0.72em;
+  line-height: 1.15;
+}
+
+.wfp-node-accent {
+  border-color: var(--wfp-accent);
+  background: var(--wfp-accent-soft);
+  color: var(--wfp-accent-dark);
+}
+
+.wfp-arrow {
+  color: var(--wfp-muted);
+  font-weight: 700;
+  font-size: 0.8em;
+}
+
+.wfp-callout {
+  border-left: 6px solid var(--wfp-accent);
+  background: var(--wfp-accent-soft);
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 0.85em;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive / print
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .wfp-slide-stage {
+    padding: 0;
+  }
+
+  .wfp-slide {
+    width: 100vw;
+    min-height: 100vh;
+    aspect-ratio: auto;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    padding: 28px 28px 24px;
+  }
+
+  .wfp-two-col,
+  .wfp-three-col {
+    grid-template-columns: 1fr;
+  }
+
+  .wfp-slide-footer {
+    font-size: 14px;
+  }
+}
+
+@media print {
+  body.wfp-slides {
+    background: #ffffff;
+  }
+
+  .wfp-slide-stage {
+    min-height: auto;
+    padding: 0;
+    display: block;
+  }
+
+  .wfp-slide {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    box-shadow: none;
+    border-radius: 0;
+    page-break-after: always;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wfp-slides *,
+  .wfp-slides *::before,
+  .wfp-slides *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

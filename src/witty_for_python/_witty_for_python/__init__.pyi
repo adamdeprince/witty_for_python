@@ -625,6 +625,11 @@ class WApplication(WObject):
     @property
     def internal_path(self) -> str: ...
 
+    def on_internal_path_changed(self, callback: Callable) -> Connection:
+        """
+        Connect `callback(path: str)` to fire when the URL fragment changes (browser back/forward, set_internal_path with emit_change=True). Returns a Connection.
+        """
+
     @property
     def session_id(self) -> str: ...
 
@@ -635,6 +640,11 @@ class WApplication(WObject):
     def trigger_update(self) -> None:
         """
         Force a server-initiated update push to the connected client. Combine with WServer.post() for cross-thread updates.
+        """
+
+    def use_style_sheet(self, link: WLink, media: str = 'all') -> None:
+        """
+        Add an external stylesheet. `link` is a WLink (URL string or a WResource handle, e.g. one mounted via WServer.add_resource). `media` is the CSS media query (default 'all'). The link tag is added to the page's <head>.
         """
 
     def defer_rendering(self) -> None:
