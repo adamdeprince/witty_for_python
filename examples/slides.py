@@ -49,6 +49,30 @@ REPO_URL = "https://github.com/adamdeprince/witty_for_python"
 # id — fine for one-session-at-a-time demo use.
 _SLIDE5_PINS: dict[str, tuple] = {}
 
+
+def _stop_all_timers() -> None:
+    """atexit hook: stop every registered slide-5 WTimer before
+    Python tears down its module globals.
+
+    Without this, a Ctrl-C race could put a WTimer's worker-thread
+    tick mid-flight at the moment Python's GC runs `_SLIDE5_PINS`'s
+    destructor and frees the underlying C++ instance. The tick then
+    derefs freed memory → segfault. Stopping the timer first means
+    no callbacks can be in flight when the wrapper is collected.
+    """
+    for entry in list(_SLIDE5_PINS.values()):
+        timer = entry[0]
+        try:
+            if timer.is_active:
+                timer.stop()
+        except Exception:
+            pass
+    _SLIDE5_PINS.clear()
+
+
+import atexit as _atexit
+_atexit.register(_stop_all_timers)
+
 # Pinned Prism.js: core + Python language pack + the default light
 # theme. Loaded via app.require() (JS) + app.use_style_sheet (CSS).
 # The `prism-core` build doesn't include any languages by default, so
@@ -163,7 +187,15 @@ def slide_4_features(body: wt.WContainerWidget) -> None:
 def slide_5_live(
     body: wt.WContainerWidget,
     app: wt.WApplication,
-) -> None:
+) -> tuple[callable, callable]:
+    """Build the live-chart slide and return (start_timer, stop_timer).
+
+    create_app wires these into the navigation so the timer only runs
+    while slide 5 is actually visible. An off-screen timer pushing
+    `trigger_update()` every cycle would saturate the client's long-
+    poll channel for no visible benefit — exactly the "request
+    storm" anti-pattern.
+    """
     body.add_widget(
         '<div class="wfp-kicker">Server-pushed updates</div>'
         '<h2 class="wfp-slide-title" style="font-size: clamp(28px, 3vw, 40px)">'
@@ -172,8 +204,8 @@ def slide_5_live(
     )
 
     # Two-column model: x (sample index), y (sin wave). 60 points = a
-    # ~6-second history window at 100ms per tick. Enough motion that
-    # the audience can see "yes, this is updating live."
+    # 30-second history window at 2 Hz. Enough motion that the
+    # audience can see "yes, this is live" without flooding the wire.
     POINTS = 60
     model = wt.WStandardItemModel(POINTS, 2)
     model.set_header_data(0, "t")
@@ -191,37 +223,55 @@ def slide_5_live(
     chart.set_width(800)
     chart.set_height(360)
 
-    # Server-side ticker. WTimer fires on a JS-side setInterval but the
-    # slot it triggers runs server-side; combined with enable_updates
-    # the chart re-renders on each tick.
-    start = time.monotonic()
     state = {"phase": 0.0}
-
     timer = wt.WTimer()
-    timer.interval = _timedelta(milliseconds=100)
+    # 2 Hz keeps the wire quiet without making the wave feel choppy.
+    # Even at this rate the timer is paused whenever the user is on
+    # another slide (see create_app), so an idle deck pushes ZERO
+    # bytes / second.
+    timer.interval = _timedelta(milliseconds=500)
 
     def on_tick() -> None:
-        # Shift every point one step left; new value at the right edge.
+        # IN-PLACE mutation only. Allocating new WStandardItem objects
+        # per tick (60 allocs × 2 Hz = 120 allocs/sec) plus the
+        # corresponding setItem signals (60 dataChanged per tick) made
+        # the chart re-render 60 times per cycle. Mutating each
+        # cell's text directly is one dataChanged per cell — and the
+        # chart batches its single re-render at the end of the slot.
         state["phase"] += 0.15
         for i in range(POINTS - 1):
-            old = model.item(i + 1, 1)
-            model.set_item(i, 1, wt.WStandardItem(old.text if old else "0"))
+            src = model.item(i + 1, 1)
+            dst = model.item(i, 1)
+            if src is not None and dst is not None:
+                dst.text = src.text
         new_y = math.sin(state["phase"]) + 0.4 * math.sin(state["phase"] * 2.7)
-        model.set_item(POINTS - 1, 1, wt.WStandardItem(f"{new_y:.4f}"))
-        # `app.trigger_update()` flushes server-initiated changes to the
-        # client. Required because the chart change is happening outside
-        # any user event.
+        last = model.item(POINTS - 1, 1)
+        if last is not None:
+            last.text = f"{new_y:.4f}"
+        # Flush server-initiated DOM diffs to the connected client.
+        # Without this call, the chart update would only reach the
+        # browser on the next client-initiated round-trip.
         app.trigger_update()
 
     timer.timeout.connect(on_tick)
-    timer.start()
-    # nanobind-bound classes don't carry a Python __dict__, so we can't
-    # stash references on `app` itself. Park them in a module-level
-    # registry keyed by the session id — entries leak forever, but a
-    # single-presenter slide deck only ever holds one. For a long-
-    # running multi-session app this should plug into a `WApplication`
-    # destruction hook (not bound).
+    # NOTE: don't start the timer here — create_app starts/stops it on
+    # slide-5 visibility transitions. _SLIDE5_PINS keeps a strong
+    # reference so the timer + closures aren't GC'd while the session
+    # lives; the atexit handler stops every timer cleanly before
+    # Python tears down nanobind wrappers (which would otherwise
+    # destruct timer C++ instances while Wt's worker thread is still
+    # firing them — that race was the Ctrl-C segfault).
     _SLIDE5_PINS[app.session_id] = (timer, model, chart, state)
+
+    def start_timer() -> None:
+        if not timer.is_active:
+            timer.start()
+
+    def stop_timer() -> None:
+        if timer.is_active:
+            timer.stop()
+
+    return start_timer, stop_timer
 
 
 def slide_6_close(body: wt.WContainerWidget) -> None:
@@ -315,11 +365,14 @@ def _build_slide(
     on_prev: callable,
     on_next: callable,
     app: wt.WApplication,
-) -> wt.WContainerWidget:
+) -> tuple[wt.WContainerWidget, callable | None, callable | None]:
     """Construct one slide widget.
 
-    The live-data slide (slide 5) needs the WApplication for
-    enable_updates / trigger_update, so we pass `app` through.
+    Returns (slide_widget, on_enter, on_leave) — the live-data slide
+    (slide 5) provides start/stop callbacks for its WTimer; all other
+    slides return (slide, None, None). create_app wires the callbacks
+    into navigation so the timer is only running while the slide is
+    visible — an idle deck pushes zero bytes/sec.
     """
     slide = wt.WContainerWidget()
     slide.style_class = "wfp-slide"
@@ -329,15 +382,19 @@ def _build_slide(
     body = slide.add_widget(wt.WContainerWidget())
     body.style_class = "wfp-slide-body"
     _, builder, _ = SLIDES[index]
-    # The live-data builder takes (body, app); the others take (body).
-    # Dispatch by introspecting the callable's positional-arg count.
+    # Some builders take (body, app) and may return (on_enter, on_leave);
+    # the simple ones just take (body). Introspect arity to dispatch.
     try:
         import inspect
         nparams = len(inspect.signature(builder).parameters)
     except (TypeError, ValueError):
         nparams = 1
+    on_enter: callable | None = None
+    on_leave: callable | None = None
     if nparams >= 2:
-        builder(body, app)
+        result = builder(body, app)
+        if isinstance(result, tuple) and len(result) == 2:
+            on_enter, on_leave = result
     else:
         builder(body)
 
@@ -359,7 +416,7 @@ def _build_slide(
         next_.hidden = True
     next_.clicked.connect(on_next)
 
-    return slide
+    return slide, on_enter, on_leave
 
 
 def create_app(env: wt.WEnvironment) -> wt.WApplication:
@@ -387,18 +444,43 @@ def create_app(env: wt.WEnvironment) -> wt.WApplication:
     deck = stage.add_widget(wt.WStackedWidget())
     total = len(SLIDES)
 
+    # Per-slide enter/leave hooks. The live-data slide populates its
+    # slot with timer start/stop; other slides leave them None. The
+    # navigation handlers below call hooks on transition so the
+    # WTimer is only running while slide 5 is on screen — an idle
+    # deck pushes ZERO server-initiated updates.
+    enter_hooks: list[callable | None] = [None] * total
+    leave_hooks: list[callable | None] = [None] * total
+
+    def go_to(new_idx: int) -> None:
+        new_idx = max(0, min(total - 1, new_idx))
+        old_idx = deck.current_index
+        if old_idx == new_idx:
+            return
+        if leave_hooks[old_idx] is not None:
+            leave_hooks[old_idx]()
+        deck.current_index = new_idx
+        if enter_hooks[new_idx] is not None:
+            enter_hooks[new_idx]()
+        _rehighlight(app)
+
     def make_handlers(i: int) -> tuple[callable, callable]:
-        def prev() -> None:
-            deck.current_index = max(0, i - 1)
-            _rehighlight(app)
-        def nxt() -> None:
-            deck.current_index = min(total - 1, i + 1)
-            _rehighlight(app)
-        return prev, nxt
+        # Each slide's prev/next captures its own i so rapid double-
+        # clicks don't accumulate based on the slot ordering.
+        return (lambda: go_to(i - 1)), (lambda: go_to(i + 1))
 
     for i in range(total):
         on_prev, on_next = make_handlers(i)
-        deck.add_widget(_build_slide(i, total, on_prev, on_next, app))
+        slide_widget, on_enter, on_leave = _build_slide(
+            i, total, on_prev, on_next, app)
+        deck.add_widget(slide_widget)
+        enter_hooks[i] = on_enter
+        leave_hooks[i] = on_leave
+
+    # If the user lands directly on a slide whose on_enter we'd want
+    # to fire (only slide 5 has one), call it now. Otherwise idle.
+    if enter_hooks[0] is not None:
+        enter_hooks[0]()
 
     # The code slide is index 2 (the third), so it's already rendered
     # at load. Prism's auto-highlight runs once on DOMContentLoaded —
