@@ -642,6 +642,21 @@ class WApplication(WObject):
         Force a server-initiated update push to the connected client. Combine with WServer.post() for cross-thread updates.
         """
 
+    def require(self, url: str, symbol: str = '') -> bool:
+        """
+        Load an external JavaScript library before the page is rendered. Subsequent do_javascript() calls are deferred until the library has loaded. If `symbol` is given, Wt checks for its existence to avoid loading the library twice. Returns True if the library was scheduled to load, False if `symbol` was already defined.
+        """
+
+    def do_javascript(self, javascript: str, after_loaded: bool = True) -> None:
+        """
+        Send arbitrary JS to the client. If `after_loaded` is True (default) the JS runs after all require()'d libraries have loaded; False makes it run inline before the DOM finishes.
+        """
+
+    def enable_updates(self, enabled: bool = True) -> None:
+        """
+        Allow server-initiated updates: changes made to widgets from a worker thread (WTimer, WServer.post) are pushed to the connected client. Without this, server-side widget mutations only reach the browser on the next client-initiated round-trip.
+        """
+
     def use_style_sheet(self, link: WLink, media: str = 'all') -> None:
         """
         Add an external stylesheet. `link` is a WLink (URL string or a WResource handle, e.g. one mounted via WServer.add_resource). `media` is the CSS media query (default 'all'). The link tag is added to the page's <head>.

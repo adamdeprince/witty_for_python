@@ -138,6 +138,38 @@ void register_application(nb::module_& m) {
         .def("trigger_update", &Wt::WApplication::triggerUpdate,
              "Force a server-initiated update push to the connected client. "
              "Combine with WServer.post() for cross-thread updates.")
+        .def("require",
+             [](Wt::WApplication& self, const std::string& url,
+                const std::string& symbol) {
+                 return self.require(url, symbol);
+             },
+             "url"_a, "symbol"_a = std::string(),
+             "Load an external JavaScript library before the page is "
+             "rendered. Subsequent do_javascript() calls are deferred "
+             "until the library has loaded. If `symbol` is given, Wt "
+             "checks for its existence to avoid loading the library "
+             "twice. Returns True if the library was scheduled to "
+             "load, False if `symbol` was already defined.")
+        .def("do_javascript",
+             [](Wt::WApplication& self, const std::string& js,
+                bool after_loaded) {
+                 self.doJavaScript(js, after_loaded);
+             },
+             "javascript"_a, "after_loaded"_a = true,
+             "Send arbitrary JS to the client. If `after_loaded` is "
+             "True (default) the JS runs after all require()'d "
+             "libraries have loaded; False makes it run inline before "
+             "the DOM finishes.")
+        .def("enable_updates",
+             [](Wt::WApplication& self, bool enabled) {
+                 self.enableUpdates(enabled);
+             },
+             "enabled"_a = true,
+             "Allow server-initiated updates: changes made to widgets "
+             "from a worker thread (WTimer, WServer.post) are pushed "
+             "to the connected client. Without this, server-side "
+             "widget mutations only reach the browser on the next "
+             "client-initiated round-trip.")
         .def("use_style_sheet",
              [](Wt::WApplication& self, const Wt::WLink& link,
                 const std::string& media) {

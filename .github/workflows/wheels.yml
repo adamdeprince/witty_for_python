@@ -5,10 +5,12 @@ on:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
-      upload:
-        description: "Upload to test.pypi.org"
+      target:
+        description: "Where to upload (pypi / testpypi / none)"
         required: false
-        default: "false"
+        default: "none"
+        type: choice
+        options: ["none", "testpypi", "pypi"]
 
 jobs:
   build:
@@ -80,23 +82,49 @@ jobs:
             fi
           done
 
+      - name: twine check (validate METADATA, README rendering, classifiers)
+        run: |
+          pip install twine
+          twine check wheelhouse/*.whl
+
       - uses: actions/upload-artifact@v4
         with:
           name: wheel-cp312-abi3-x86_64
           path: wheelhouse/*.whl
           if-no-files-found: error
 
-      # Upload to TestPyPI on tag pushes (or manual dispatch with upload=true).
-      # Real PyPI is not wired up here — release once we're past pre-alpha.
+      # Upload behaviour:
+      #   - `v*` tag push           → real PyPI (uses PYPI_API_TOKEN)
+      #   - manual dispatch testpypi → TestPyPI (uses TEST_PYPI_TOKEN)
+      #   - manual dispatch pypi    → real PyPI (uses PYPI_API_TOKEN)
+      #   - manual dispatch none    → build artefact only, no upload
+      #
+      # Real PyPI uploads are version-locked: once 0.1.0 is on PyPI you
+      # can't reupload, you'd need 0.1.1. TestPyPI is the staging ground.
       - name: Upload to TestPyPI
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload == 'true')
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'testpypi'
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
         run: |
           if [ -z "$TWINE_PASSWORD" ]; then
             echo "TEST_PYPI_TOKEN secret not set; skipping upload"
-            exit 0
+            exit 1
           fi
           pip install twine
           twine upload --repository-url https://test.pypi.org/legacy/ wheelhouse/*.whl
+
+      - name: Upload to PyPI
+        if: |
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'pypi')
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          if [ -z "$TWINE_PASSWORD" ]; then
+            echo "PYPI_API_TOKEN secret not set; skipping upload"
+            exit 1
+          fi
+          pip install twine
+          twine upload wheelhouse/*.whl
