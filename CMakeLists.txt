@@ -61,6 +61,15 @@ set(CONNECTOR_HTTP ON CACHE BOOL "" FORCE)
 set(CONNECTOR_FCGI OFF CACHE BOOL "" FORCE)
 set(ENABLE_SSL OFF CACHE BOOL "" FORCE)
 set(ENABLE_HARU ON CACHE BOOL "" FORCE)
+# Force Wt to use its vendored Howard-Hinnant `date` library for
+# WLocale's timezone handling, rather than C++20's `std::chrono::
+# time_zone`. Wt defaults to "std" whenever CMAKE_CXX_STANDARD >= 20,
+# but Apple Clang's libc++ (and some libstdc++ versions) don't ship
+# the time_zone type even with -std=c++20 enabled — the build then
+# fails at WLocale.h. The vendored Hinnant impl is bit-for-bit
+# equivalent for our use cases and works on every compiler that
+# builds the rest of Wt.
+set(WT_CPP20_DATE_TZ_IMPLEMENTATION "date" CACHE STRING "" FORCE)
 set(ENABLE_PANGO OFF CACHE BOOL "" FORCE)
 set(ENABLE_OPENGL OFF CACHE BOOL "" FORCE)
 set(ENABLE_SQLITE OFF CACHE BOOL "" FORCE)
@@ -229,4 +238,18 @@ if(WITTY_FOR_PYTHON_BUILD_TINYMCE)
 
   install(DIRECTORY "${TINYMCE_DIST_DIR}/"
           DESTINATION witty_for_python/_wt_resources/tinymce)
+else()
+  # WITTY_FOR_PYTHON_BUILD_TINYMCE=OFF can still ship TinyMCE if a
+  # pre-built dist already lives at the expected path (e.g. the build
+  # host extracted a tarball from another machine). Useful when yarn
+  # is unavailable or memory-starved — on aarch64 builders with
+  # ~2 GB RAM, TinyMCE's yarn build OOM-kills Node mid-grunt.
+  set(_TINYMCE_PREBUILT
+      "${CMAKE_SOURCE_DIR}/extern/tinymce/modules/tinymce/js/tinymce")
+  if(EXISTS "${_TINYMCE_PREBUILT}/tinymce.min.js")
+    message(STATUS "TinyMCE build skipped; bundling pre-built dist from "
+                   "${_TINYMCE_PREBUILT}")
+    install(DIRECTORY "${_TINYMCE_PREBUILT}/"
+            DESTINATION witty_for_python/_wt_resources/tinymce)
+  endif()
 endif()
