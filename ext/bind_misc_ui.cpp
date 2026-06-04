@@ -23,29 +23,40 @@ void register_misc_ui(nb::module_& m) {
     // closed / shown / error are all parameterless JSignals). Same shape
     // as the existing JInt64Signal binding in bind_signals.cpp.
 
-    nb::class_<Wt::JSignal<>>(m, "JSignal0")
+    nb::class_<Wt::JSignal<>>(m, "JSignal0",
+        "Parameterless JavaScript signal — a Wt::JSignal<> bridged for\n"
+        "Python. Fires when the corresponding client-side JS event happens\n"
+        "(e.g. WNotification's clicked/closed/shown/error).")
         .def("connect",
             [](Wt::JSignal<>& s, nb::callable cb) {
                 return py_connect<Wt::JSignal<>>(s, std::move(cb));
-            }, "callable"_a)
+            }, "callable"_a,
+            "Subscribe a no-arg callable. Returns a Connection — call\n"
+            "`.disconnect()` to stop receiving.")
         .def("disconnect_all_slots",
             [](Wt::JSignal<>& s) {
                 connection_registry_disconnect_all(&s);
-            });
+            },
+            "Drop every Python subscriber attached via `connect`.");
 
-    // ---- WIcon: a Font-Awesome-backed icon widget ----
-    //
-    // Inherits WInteractWidget so `clicked` and friends already work. Pass
-    // a name like "play", "envelope" — Wt looks it up in the bundled
-    // Font Awesome stylesheet (loaded on first use via `load_icon_font`).
-
-    nb::class_<Wt::WIcon, Wt::WInteractWidget>(m, "WIcon")
-        .def(heap_init<Wt::WIcon>())
+    nb::class_<Wt::WIcon, Wt::WInteractWidget>(m, "WIcon",
+        "A Font Awesome icon rendered inline. Inherits WInteractWidget so\n"
+        "`clicked` and the other input signals work without further setup.\n"
+        "\n"
+        "    container.add_widget(wt.WIcon('envelope')).clicked.connect(open_inbox)\n"
+        "\n"
+        "The icon name is looked up in the bundled Font Awesome stylesheet,\n"
+        "which is added to the page lazily on first WIcon construction (or\n"
+        "explicitly via `load_icon_font`).")
+        .def(heap_init<Wt::WIcon>(),
+             "Construct with no icon — set `name` later.")
         .def(heap_init<Wt::WIcon, const std::string&>(), "name"_a,
              "Construct with a Font Awesome icon name (e.g. 'play', 'gear').")
         .def_prop_rw("name",
             [](const Wt::WIcon& self) { return self.name(); },
-            [](Wt::WIcon& self, const std::string& n) { self.setName(n); })
+            [](Wt::WIcon& self, const std::string& n) { self.setName(n); },
+            "The Font Awesome icon name. Assigning swaps the rendered\n"
+            "glyph on the next round-trip.")
         .def_prop_rw("size",
             &Wt::WIcon::size,
             &Wt::WIcon::setSize,
@@ -56,13 +67,23 @@ void register_misc_ui(nb::module_& m) {
             "automatically the first time a WIcon is constructed; expose "
             "it here for explicit early-load.");
 
-    // ---- WIconPair: a togglable two-icon widget ----
+    nb::enum_<Wt::WIconPair::IconType>(m, "IconType",
+        "Tells WIconPair how to interpret its two icon strings.")
+        .value("URI", Wt::WIconPair::IconType::URI,
+               "Treat the string as a URL pointing at an image.")
+        .value("IconName", Wt::WIconPair::IconType::IconName,
+               "Treat the string as a Font Awesome icon name.");
 
-    nb::enum_<Wt::WIconPair::IconType>(m, "IconType")
-        .value("URI", Wt::WIconPair::IconType::URI)
-        .value("IconName", Wt::WIconPair::IconType::IconName);
-
-    nb::class_<Wt::WIconPair, Wt::WWidget>(m, "WIconPair")
+    nb::class_<Wt::WIconPair, Wt::WWidget>(m, "WIconPair",
+        "Two icons displayed one at a time, with optional click-to-toggle\n"
+        "behavior. Useful for expand/collapse indicators, on/off lamps,\n"
+        "anywhere a small bistable visual cue is wanted.\n"
+        "\n"
+        "    pair = container.add_widget(\n"
+        "        wt.WIconPair('plus-square', 'minus-square'))\n"
+        "    pair.set_icons_type(wt.IconType.IconName)\n"
+        "    pair.icon1_clicked.connect(expand)\n"
+        "    pair.icon2_clicked.connect(collapse)")
         .def(heap_init<Wt::WIconPair, const std::string&, const std::string&, bool>(),
              "icon1"_a, "icon2"_a, "click_is_switch"_a = true,
              "Two icon strings (URLs or Font-Awesome names). When "
@@ -74,29 +95,36 @@ void register_misc_ui(nb::module_& m) {
             "Active icon: 0 → icon1, 1 → icon2.")
         .def("show_icon1", &Wt::WIconPair::showIcon1,
              "Equivalent to `state = 0`.")
-        .def("show_icon2", &Wt::WIconPair::showIcon2)
-        .def("set_icon1_type", &Wt::WIconPair::setIcon1Type, "type"_a)
-        .def("set_icon2_type", &Wt::WIconPair::setIcon2Type, "type"_a)
+        .def("show_icon2", &Wt::WIconPair::showIcon2,
+             "Equivalent to `state = 1`.")
+        .def("set_icon1_type", &Wt::WIconPair::setIcon1Type, "type"_a,
+             "Set whether icon1's string is a URL or a Font Awesome name.")
+        .def("set_icon2_type", &Wt::WIconPair::setIcon2Type, "type"_a,
+             "Set whether icon2's string is a URL or a Font Awesome name.")
         .def("set_icons_type", &Wt::WIconPair::setIconsType, "type"_a,
              "Shortcut for setting both icons to the same IconType.")
         .def_prop_ro("icon1_clicked", &Wt::WIconPair::icon1Clicked,
                      nb::rv_policy::reference_internal,
                      "MouseEventSignal — clicks while icon1 is visible.")
         .def_prop_ro("icon2_clicked", &Wt::WIconPair::icon2Clicked,
-                     nb::rv_policy::reference_internal);
+                     nb::rv_policy::reference_internal,
+                     "MouseEventSignal — clicks while icon2 is visible.");
 
-    // ---- WPopupWidget: generic floating overlay ----
-    //
-    // Wraps a content widget (passed at construction time, ownership
-    // transferred) into a thing that can pop up over the page anchored to
-    // another widget. Different from WPopupMenu (which is a menu); use
-    // WPopupWidget for arbitrary popup content (tooltips, custom menus,
-    // detail panels).
-    //
     // Bound as inheriting WWidget per the project convention for
     // WCompositeWidget descendants.
 
-    nb::class_<Wt::WPopupWidget, Wt::WWidget>(m, "WPopupWidget")
+    nb::class_<Wt::WPopupWidget, Wt::WWidget>(m, "WPopupWidget",
+        "A floating overlay that wraps an arbitrary widget. Anchors to\n"
+        "another widget in the page and pops up over the surrounding\n"
+        "content — useful for custom tooltips, detail callouts, or any\n"
+        "content panel that should appear next to a trigger.\n"
+        "\n"
+        "    info = wt.WText('More details here.')\n"
+        "    popup = wt.WPopupWidget(info)\n"
+        "    popup.set_anchor_widget(trigger)\n"
+        "    popup.transient = True\n"
+        "\n"
+        "Different from WPopupMenu (which is a menu of selectable items).")
         .def(nb::new_(
                 [](std::unique_ptr<Wt::WWidget> contents) {
                     return std::make_unique<Wt::WPopupWidget>(
@@ -131,57 +159,89 @@ void register_misc_ui(nb::module_& m) {
                      nb::rv_policy::reference_internal,
                      "Signal[] — fires when the popup transitions to shown.");
 
-    // ---- WLoadingIndicator family ----
-    //
     // The base is abstract — concrete subclasses (WDefaultLoadingIndicator,
     // WOverlayLoadingIndicator) provide the visible loading UI shown by
     // WApplication during a server round-trip. Plug a custom one in via
     // WApplication.set_loading_indicator (not bound in v1).
 
-    nb::class_<Wt::WLoadingIndicator, Wt::WWidget>(m, "WLoadingIndicator")
+    nb::class_<Wt::WLoadingIndicator, Wt::WWidget>(m, "WLoadingIndicator",
+        "Abstract base for the spinner / banner shown during a server\n"
+        "round-trip. Concrete subclasses (WDefaultLoadingIndicator,\n"
+        "WOverlayLoadingIndicator) provide the visible UI; plug one into\n"
+        "the application to control the look of the load state.")
         .def("set_message", &Wt::WLoadingIndicator::setMessage, "text"_a,
              "Replace the loading message shown to the user.");
 
     nb::class_<Wt::WDefaultLoadingIndicator, Wt::WLoadingIndicator>(
-        m, "WDefaultLoadingIndicator")
+        m, "WDefaultLoadingIndicator",
+        "The default unobtrusive loading indicator — a small fixed-\n"
+        "position text label in the corner of the page.")
         .def(heap_init<Wt::WDefaultLoadingIndicator>(),
-             "Wt's plain-text loading indicator: a small fixed-position "
-             "text label.");
+             "Construct the default text-label indicator.");
 
     nb::class_<Wt::WOverlayLoadingIndicator, Wt::WLoadingIndicator>(
-        m, "WOverlayLoadingIndicator")
+        m, "WOverlayLoadingIndicator",
+        "A more aggressive loading indicator — dims the entire page with\n"
+        "a translucent overlay and a centered banner during requests.\n"
+        "Useful when the user shouldn't be interacting with stale content\n"
+        "while the server is busy.")
         .def(heap_init<Wt::WOverlayLoadingIndicator>(),
-             "A more visible loading indicator — dims the page contents "
-             "with a translucent overlay during requests.");
+             "Construct the overlay-style indicator.");
 
-    // ---- WNotification: browser-native Notification API wrapper ----
-    //
     // Shows OS-level notifications (the same kind that a website asks
     // permission for). Requires user permission via Permission.Grant
     // requested upfront. See WApplication.requestPermission to drive that.
 
-    nb::enum_<Wt::WNotification::Permission>(m, "NotificationPermission")
-        .value("Default", Wt::WNotification::Permission::Default)
-        .value("Granted", Wt::WNotification::Permission::Granted)
-        .value("Denied",  Wt::WNotification::Permission::Denied);
+    nb::enum_<Wt::WNotification::Permission>(m, "NotificationPermission",
+        "User-granted permission state for the browser Notification API.")
+        .value("Default", Wt::WNotification::Permission::Default,
+               "Permission not yet requested or decided.")
+        .value("Granted", Wt::WNotification::Permission::Granted,
+               "User allowed notifications — `send` will work.")
+        .value("Denied",  Wt::WNotification::Permission::Denied,
+               "User denied notifications — `send` will silently fail and\n"
+               "`error` will fire.");
 
-    nb::class_<Wt::WNotification, Wt::WObject>(m, "WNotification")
+    nb::class_<Wt::WNotification, Wt::WObject>(m, "WNotification",
+        "Browser Notification API wrapper — produces native OS-level\n"
+        "notifications (the toasts the operating system displays outside\n"
+        "the page). Inherits WObject, not a widget, so it's not added to\n"
+        "a container.\n"
+        "\n"
+        "    note = wt.WNotification('Build done', 'All tests passed.')\n"
+        "    note.set_icon(wt.WLink('/static/check.png'))\n"
+        "    note.clicked.connect(focus_app)\n"
+        "    note.send()\n"
+        "\n"
+        "The browser must have granted notification permission first;\n"
+        "without it `send` fails silently and `error` fires.")
         .def(heap_init<Wt::WNotification, const Wt::WString&, const Wt::WString&>(),
-             "title"_a = Wt::WString(), "body"_a = Wt::WString())
-        .def("set_title", &Wt::WNotification::setTitle, "title"_a)
-        .def("set_body", &Wt::WNotification::setBody, "body"_a)
-        .def("set_icon", &Wt::WNotification::setIcon, "icon_link"_a)
-        .def("set_badge", &Wt::WNotification::setBadge, "badge_link"_a)
+             "title"_a = Wt::WString(), "body"_a = Wt::WString(),
+             "Construct a notification with optional title and body. Both\n"
+             "can be set later via set_title / set_body.")
+        .def("set_title", &Wt::WNotification::setTitle, "title"_a,
+             "Set the notification's heading line.")
+        .def("set_body", &Wt::WNotification::setBody, "body"_a,
+             "Set the notification's body text.")
+        .def("set_icon", &Wt::WNotification::setIcon, "icon_link"_a,
+             "Set the small icon shown in the notification (WLink to an\n"
+             "image URL or resource).")
+        .def("set_badge", &Wt::WNotification::setBadge, "badge_link"_a,
+             "Set the badge image — used on some platforms when the full\n"
+             "notification can't be shown (e.g. lock screens).")
         .def_prop_rw("silent",
             &Wt::WNotification::silent,
             [](Wt::WNotification& self, bool silent) {
                 self.setSilent(silent);
-            })
+            },
+            "When True, the OS suppresses the usual notification sound.")
         .def_prop_rw("require_interaction",
             &Wt::WNotification::requireInteraction,
             [](Wt::WNotification& self, bool require) {
                 self.setRequireInteraction(require);
-            })
+            },
+            "When True, the notification stays on screen until the user\n"
+            "dismisses it instead of auto-fading.")
         .def("send", &Wt::WNotification::send,
              "Push the notification to the browser. Permission must be "
              "already granted.")
@@ -191,9 +251,13 @@ void register_misc_ui(nb::module_& m) {
                      nb::rv_policy::reference_internal,
                      "JSignal0 — user clicked on the notification body.")
         .def_prop_ro("closed", &Wt::WNotification::closed,
-                     nb::rv_policy::reference_internal)
+                     nb::rv_policy::reference_internal,
+                     "JSignal0 — fires when the notification is dismissed,\n"
+                     "either by the user or via `close`.")
         .def_prop_ro("shown", &Wt::WNotification::shown,
-                     nb::rv_policy::reference_internal)
+                     nb::rv_policy::reference_internal,
+                     "JSignal0 — fires once the OS has accepted and\n"
+                     "displayed the notification.")
         .def_prop_ro("error", &Wt::WNotification::error,
                      nb::rv_policy::reference_internal,
                      "JSignal0 — fires when the OS rejects the show "

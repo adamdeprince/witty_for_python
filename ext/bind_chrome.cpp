@@ -26,7 +26,12 @@ void register_chrome(nb::module_& m) {
     // values that actually appear in current bindings — the rest are
     // available as raw ints if needed for future surface.
 
-    nb::enum_<Wt::AlignmentFlag>(m, "AlignmentFlag", nb::is_arithmetic())
+    nb::enum_<Wt::AlignmentFlag>(m, "AlignmentFlag", nb::is_arithmetic(),
+        "Bit flags for positioning items inside containers that support\n"
+        "left/right justification (WNavigationBar, WToolBar) or horizontal/\n"
+        "vertical alignment (WBoxLayout, WGridLayout). The arithmetic trait\n"
+        "lets the values be OR'd together where Wt accepts a combined flag\n"
+        "set.")
         .value("Left", Wt::AlignmentFlag::Left)
         .value("Right", Wt::AlignmentFlag::Right)
         .value("Center", Wt::AlignmentFlag::Center)
@@ -38,11 +43,19 @@ void register_chrome(nb::module_& m) {
 
     // ---- WPoint: integer 2-D coordinate, used by WPopupMenu.popup() ----
 
-    nb::class_<Wt::WPoint>(m, "WPoint")
-        .def(nb::init<>())
-        .def(nb::init<int, int>(), "x"_a, "y"_a)
-        .def_prop_rw("x", &Wt::WPoint::x, &Wt::WPoint::setX)
-        .def_prop_rw("y", &Wt::WPoint::y, &Wt::WPoint::setY)
+    nb::class_<Wt::WPoint>(m, "WPoint",
+        "Integer (x, y) coordinate pair in page-relative pixels.\n"
+        "Used as the position argument to `WPopupMenu.popup(point)`.\n"
+        "\n"
+        "    menu.popup(wt.WPoint(120, 80))")
+        .def(nb::init<>(),
+             "Construct a point at the origin (0, 0).")
+        .def(nb::init<int, int>(), "x"_a, "y"_a,
+             "Construct a point at (`x`, `y`).")
+        .def_prop_rw("x", &Wt::WPoint::x, &Wt::WPoint::setX,
+            "Horizontal coordinate in pixels.")
+        .def_prop_rw("y", &Wt::WPoint::y, &Wt::WPoint::setY,
+            "Vertical coordinate in pixels.")
         .def("__repr__", [](const Wt::WPoint& p) {
             return "WPoint(x=" + std::to_string(p.x())
                 + ", y=" + std::to_string(p.y()) + ")";
@@ -58,10 +71,28 @@ void register_chrome(nb::module_& m) {
     // time is undefined; rely on `hide_on_select=True` (the default) plus
     // `triggered` to know when the cycle is done.
 
-    nb::class_<Wt::WPopupMenu, Wt::WMenu>(m, "WPopupMenu")
+    nb::class_<Wt::WPopupMenu, Wt::WMenu>(m, "WPopupMenu",
+        "Floating menu that appears at a screen location on demand.\n"
+        "Inherits the full WMenu surface (add_item, etc.) so building\n"
+        "entries works the same; what's added is the ability to summon\n"
+        "the menu at a point, at a mouse event, or anchored to a widget.\n"
+        "\n"
+        "    menu = wt.WPopupMenu()\n"
+        "    menu.add_item('Cut')\n"
+        "    menu.add_item('Copy')\n"
+        "    container.add_widget(wt.WPushButton('Edit')).clicked.connect(\n"
+        "        lambda e: menu.popup(e))\n"
+        "    menu.triggered.connect(lambda item: handle(item.text))\n"
+        "\n"
+        "Pair with `set_button(btn)` for the typical menu-button UX, or\n"
+        "call `popup(...)` yourself from a slot. With `hide_on_select`\n"
+        "left at its default of True, `triggered` is the signal you watch\n"
+        "for to know the user picked something.")
         .def(nb::new_([]() {
             return std::make_unique<Wt::WPopupMenu>(nullptr);
-        }))
+        }),
+             "Construct a standalone popup menu with no items. Use the\n"
+             "inherited `add_item` to populate it.")
         .def("popup",
              nb::overload_cast<const Wt::WPoint&>(&Wt::WPopupMenu::popup),
              "point"_a,
@@ -104,9 +135,17 @@ void register_chrome(nb::module_& m) {
     // Extends WText, so all text/format APIs apply. The badge renders
     // inline-block by default — handy for "12 unread"-style counts.
 
-    nb::class_<Wt::WBadge, Wt::WText>(m, "WBadge")
-        .def(heap_init<Wt::WBadge>())
-        .def(heap_init<Wt::WBadge, const Wt::WString&>(), "text"_a)
+    nb::class_<Wt::WBadge, Wt::WText>(m, "WBadge",
+        "Small inline label, typically appended to another widget for\n"
+        "counts or status pills (e.g. '12 unread'). Inherits WText, so\n"
+        "set the displayed value via the `text` property.\n"
+        "\n"
+        "    btn = container.add_widget(wt.WPushButton('Inbox'))\n"
+        "    btn.add_widget(wt.WBadge('12'))")
+        .def(heap_init<Wt::WBadge>(),
+             "Construct an empty badge with no caption.")
+        .def(heap_init<Wt::WBadge, const Wt::WString&>(), "text"_a,
+             "Construct a badge displaying `text`.")
         .def_prop_rw("use_default_style",
             &Wt::WBadge::useDefaultStyle,
             &Wt::WBadge::setUseDefaultStyle,
@@ -115,8 +154,17 @@ void register_chrome(nb::module_& m) {
 
     // ---- WToolBar: horizontal/vertical row of buttons + separators ----
 
-    nb::class_<Wt::WToolBar, Wt::WWidget>(m, "WToolBar")
-        .def(heap_init<Wt::WToolBar>())
+    nb::class_<Wt::WToolBar, Wt::WWidget>(m, "WToolBar",
+        "A row (or column) of buttons with optional separators between\n"
+        "groups. Add buttons via `add_button`; mix in arbitrary widgets\n"
+        "with `add_widget` for non-button controls.\n"
+        "\n"
+        "    bar = container.add_widget(wt.WToolBar())\n"
+        "    bar.add_button(wt.WPushButton('Save')).clicked.connect(save)\n"
+        "    bar.add_separator()\n"
+        "    bar.add_button(wt.WPushButton('Quit')).clicked.connect(app.quit)")
+        .def(heap_init<Wt::WToolBar>(),
+             "Construct an empty toolbar with horizontal orientation.")
         .def("set_orientation", &Wt::WToolBar::setOrientation,
              "orientation"_a,
              "Horizontal or Vertical layout for the buttons. Write-only on "
@@ -145,7 +193,14 @@ void register_chrome(nb::module_& m) {
                                    /*destruct*/ false);
                 return py_btn;
             },
-            "button"_a, "alignment"_a = Wt::AlignmentFlag::Left)
+            "button"_a, "alignment"_a = Wt::AlignmentFlag::Left,
+            "Transfer ownership of `button` to the toolbar (a WPushButton\n"
+            "or WSplitButton) and return the same Python wrapper, re-armed\n"
+            "as a non-owning alias for chaining. `alignment` controls\n"
+            "left/right placement when the theme supports it.\n"
+            "\n"
+            "    bar.add_button(wt.WPushButton('Help'),\n"
+            "                   wt.AlignmentFlag.Right).clicked.connect(open_help)")
         .def("add_widget",
             [](Wt::WToolBar& self, nb::object py_widget,
                Wt::AlignmentFlag alignment) -> nb::object {
@@ -155,7 +210,10 @@ void register_chrome(nb::module_& m) {
                                    /*destruct*/ false);
                 return py_widget;
             },
-            "widget"_a, "alignment"_a = Wt::AlignmentFlag::Left)
+            "widget"_a, "alignment"_a = Wt::AlignmentFlag::Left,
+            "Add an arbitrary widget (not necessarily a button) to the\n"
+            "toolbar at the given alignment. Same ownership-transfer +\n"
+            "re-arm pattern as `add_button`.")
         .def("add_separator", &Wt::WToolBar::addSeparator,
              "Add a visual divider between groups of items.");
 
@@ -164,9 +222,24 @@ void register_chrome(nb::module_& m) {
     // Constructs without a menu attached. Build a WPopupMenu, then
     // `split_btn.set_menu(menu)` to wire the dropdown.
 
-    nb::class_<Wt::WSplitButton, Wt::WWidget>(m, "WSplitButton")
-        .def(heap_init<Wt::WSplitButton>())
-        .def(heap_init<Wt::WSplitButton, const Wt::WString&>(), "label"_a)
+    nb::class_<Wt::WSplitButton, Wt::WWidget>(m, "WSplitButton",
+        "A primary action button with a small chevron next to it that\n"
+        "opens a dropdown menu — the typical 'Save / Save As…' split\n"
+        "button found in toolbars. Build a WPopupMenu, attach it via\n"
+        "`set_menu`, then wire `action_button.clicked` for the default\n"
+        "action.\n"
+        "\n"
+        "    sb = bar.add_button(wt.WSplitButton('Save'))\n"
+        "    sb.action_button.clicked.connect(save_default)\n"
+        "    menu = wt.WPopupMenu()\n"
+        "    menu.add_item('Save As…')\n"
+        "    menu.add_item('Save All')\n"
+        "    sb.set_menu(menu)")
+        .def(heap_init<Wt::WSplitButton>(),
+             "Construct an unlabelled split button with no menu attached.")
+        .def(heap_init<Wt::WSplitButton, const Wt::WString&>(), "label"_a,
+             "Construct a split button captioned `label` with no menu\n"
+             "attached. Use `set_menu` to wire the dropdown.")
         .def_prop_ro("action_button", &Wt::WSplitButton::actionButton,
                      nb::rv_policy::reference_internal,
                      "The primary (left) button — connect `clicked` for the "
@@ -195,8 +268,22 @@ void register_chrome(nb::module_& m) {
     // for left/right placement; the alignment argument is preserved for
     // older themes and for symmetry with the C++ surface.
 
-    nb::class_<Wt::WNavigationBar, Wt::WTemplate>(m, "WNavigationBar")
-        .def(heap_init<Wt::WNavigationBar>())
+    nb::class_<Wt::WNavigationBar, Wt::WTemplate>(m, "WNavigationBar",
+        "A page-top navigation bar in the Bootstrap idiom: brand on the\n"
+        "left, menus and form fields stacked horizontally, optional\n"
+        "search box. Collapses into a hamburger menu on narrow viewports\n"
+        "when `set_responsive(True)` is set.\n"
+        "\n"
+        "    nav = app.root.add_widget(wt.WNavigationBar())\n"
+        "    nav.set_title('My App', wt.WLink('/'))\n"
+        "    nav.set_responsive(True)\n"
+        "    menu = wt.WMenu()\n"
+        "    menu.add_item('Home')\n"
+        "    menu.add_item('About')\n"
+        "    nav.add_menu(menu)")
+        .def(heap_init<Wt::WNavigationBar>(),
+             "Construct an empty navigation bar. Use `set_title` /\n"
+             "`add_menu` / `add_search` to populate it.")
         .def("set_title", &Wt::WNavigationBar::setTitle,
              "title"_a, "link"_a = Wt::WLink(),
              "Set the brand/title shown at the left of the nav bar. "
@@ -215,7 +302,10 @@ void register_chrome(nb::module_& m) {
                                    /*destruct*/ false);
                 return py_menu;
             },
-            "menu"_a, "alignment"_a = Wt::AlignmentFlag::Left)
+            "menu"_a, "alignment"_a = Wt::AlignmentFlag::Left,
+            "Embed a WMenu in the nav bar. Ownership transfers; the\n"
+            "Python wrapper is re-armed as a non-owning alias of the menu\n"
+            "the bar now holds.")
         .def("add_form_field",
             [](Wt::WNavigationBar& self, nb::object py_widget,
                Wt::AlignmentFlag alignment) -> nb::object {
@@ -237,7 +327,10 @@ void register_chrome(nb::module_& m) {
                                    /*destruct*/ false);
                 return py_field;
             },
-            "field"_a, "alignment"_a = Wt::AlignmentFlag::Left)
+            "field"_a, "alignment"_a = Wt::AlignmentFlag::Left,
+            "Add a styled search box (a WLineEdit) to the nav bar.\n"
+            "Functionally similar to `add_form_field` but themed as a\n"
+            "search input.")
         .def("add_widget",
             [](Wt::WNavigationBar& self, nb::object py_widget,
                Wt::AlignmentFlag alignment) -> nb::object {
@@ -247,7 +340,10 @@ void register_chrome(nb::module_& m) {
                                    /*destruct*/ false);
                 return py_widget;
             },
-            "widget"_a, "alignment"_a = Wt::AlignmentFlag::Left);
+            "widget"_a, "alignment"_a = Wt::AlignmentFlag::Left,
+            "Add an arbitrary widget to the nav bar at the given\n"
+            "alignment. Same ownership-transfer + re-arm pattern as\n"
+            "`add_menu`.");
 }
 
 }  // namespace witty_for_python

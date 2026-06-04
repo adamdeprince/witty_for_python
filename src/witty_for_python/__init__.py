@@ -271,7 +271,7 @@ from ._witty_for_python import (
     WWidget,
 )
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 # Every Signal/EventSignal/payload-typed Signal binding exposes

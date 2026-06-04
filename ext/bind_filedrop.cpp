@@ -14,7 +14,9 @@ void register_filedrop(nb::module_& m) {
 
     // ---- FilePickerType enum ----
 
-    nb::enum_<Wt::FilePickerType>(m, "FilePickerType")
+    nb::enum_<Wt::FilePickerType>(m, "FilePickerType",
+        "Which native browser picker WFileDropWidget opens when the\n"
+        "user clicks the dropzone — files, folders, or neither.")
         .value("None_", Wt::FilePickerType::None)
         .value("FileSelection", Wt::FilePickerType::FileSelection)
         .value("DirectorySelection", Wt::FilePickerType::DirectorySelection);
@@ -31,7 +33,20 @@ void register_filedrop(nb::module_& m) {
     // `WFileDropWidgetFile` and re-attached as `WFileDropWidget.File` below
     // for the natural nested form.
 
-    auto file_cls = nb::class_<File, Wt::WObject>(m, "WFileDropWidgetFile");
+    auto file_cls = nb::class_<File, Wt::WObject>(m, "WFileDropWidgetFile",
+        "Metadata + per-file signals for one file that has been (or is\n"
+        "being) uploaded through a WFileDropWidget. Read the browser-\n"
+        "reported `client_file_name` / `size` / `mime_type` before the\n"
+        "transfer starts; wait on `uploaded` to get `uploaded_file`, which\n"
+        "carries the on-disk path of the spooled bytes.\n"
+        "\n"
+        "    def on_done(f):\n"
+        "        print(f.client_file_name, '->', f.uploaded_file.spool_file_name)\n"
+        "    drop.uploaded.connect(on_done)\n"
+        "\n"
+        "Owned by the parent WFileDropWidget — pointers handed to signal\n"
+        "callbacks are valid only as long as the widget keeps the file in\n"
+        "its `uploads` list. Don't stash them beyond the callback.");
     file_cls
         .def_prop_ro("client_file_name", &File::clientFileName,
             "Original filename reported by the browser. Untrusted — sanitise "
@@ -80,7 +95,13 @@ void register_filedrop(nb::module_& m) {
     // `contents()` accessor walks the folder's File entries (also non-owning
     // — pointers belong to the widget).
 
-    auto dir_cls = nb::class_<Directory, File>(m, "WFileDropWidgetDirectory")
+    auto dir_cls = nb::class_<Directory, File>(m, "WFileDropWidgetDirectory",
+        "A File subclass representing a dropped folder rather than a\n"
+        "single file. Only produced when the widget has\n"
+        "`set_accept_directories(True)` and the user drops a folder; check\n"
+        "`isinstance(f, wt.WFileDropWidget.Directory)` from a drop handler\n"
+        "to branch on it. `contents` walks the folder's entries (which may\n"
+        "themselves be Directories for recursive drops).")
         .def_prop_ro("contents",
             [](const Directory& d) {
                 // Copy out the const-ref vector so Python gets a list it
@@ -102,37 +123,54 @@ void register_filedrop(nb::module_& m) {
     // the widget. Bound here (not in bind_signals.cpp) because File must be
     // registered first.
 
-    nb::class_<Wt::Signal<File*>>(m, "FileSignal")
+    nb::class_<Wt::Signal<File*>>(m, "FileSignal",
+        "Signal carrying a single WFileDropWidget.File pointer. Used by\n"
+        "the widget's `new_upload`, `uploaded`, and `upload_failed`\n"
+        "signals — connect a `callable(file)` to react.")
         .def("connect",
             [](Wt::Signal<File*>& s, nb::callable cb) {
                 return py_connect<Wt::Signal<File*>, File*>(s, std::move(cb));
-            }, "callable"_a)
+            }, "callable"_a,
+            "Subscribe `callable(file)` to the signal. Returns a\n"
+            "Connection — call `.disconnect()` to stop receiving.")
         .def("disconnect_all_slots",
             [](Wt::Signal<File*>& s) {
                 connection_registry_disconnect_all(&s);
-            });
+            },
+            "Drop every callback previously connected through this binding.");
 
-    nb::class_<Wt::Signal<std::vector<File*>>>(m, "FileListSignal")
+    nb::class_<Wt::Signal<std::vector<File*>>>(m, "FileListSignal",
+        "Signal carrying a list of WFileDropWidget.File pointers. Used by\n"
+        "the widget's `drop` signal — fires once per drop event with the\n"
+        "freshly-introduced files.")
         .def("connect",
             [](Wt::Signal<std::vector<File*>>& s, nb::callable cb) {
                 return py_connect<Wt::Signal<std::vector<File*>>,
                                   std::vector<File*>>(s, std::move(cb));
-            }, "callable"_a)
+            }, "callable"_a,
+            "Subscribe `callable(files)` to the signal. Returns a\n"
+            "Connection — call `.disconnect()` to stop receiving.")
         .def("disconnect_all_slots",
             [](Wt::Signal<std::vector<File*>>& s) {
                 connection_registry_disconnect_all(&s);
-            });
+            },
+            "Drop every callback previously connected through this binding.");
 
-    nb::class_<Wt::Signal<File*, std::uint64_t>>(m, "FileSizeSignal")
+    nb::class_<Wt::Signal<File*, std::uint64_t>>(m, "FileSizeSignal",
+        "Signal carrying (file, size_bytes). Used by `too_large` when a\n"
+        "dropped file exceeds the configured maximum request size.")
         .def("connect",
             [](Wt::Signal<File*, std::uint64_t>& s, nb::callable cb) {
                 return py_connect<Wt::Signal<File*, std::uint64_t>,
                                   File*, std::uint64_t>(s, std::move(cb));
-            }, "callable"_a)
+            }, "callable"_a,
+            "Subscribe `callable(file, size)` to the signal. Returns a\n"
+            "Connection — call `.disconnect()` to stop receiving.")
         .def("disconnect_all_slots",
             [](Wt::Signal<File*, std::uint64_t>& s) {
                 connection_registry_disconnect_all(&s);
-            });
+            },
+            "Drop every callback previously connected through this binding.");
 
     // ---- WFileDropWidget ----
     //
@@ -146,9 +184,31 @@ void register_filedrop(nb::module_& m) {
     // an icon, instructions) is shown as the dropzone's body.
 
     auto drop_cls = nb::class_<Wt::WFileDropWidget, Wt::WContainerWidget>(
-        m, "WFileDropWidget");
+        m, "WFileDropWidget",
+        "Drag-and-drop upload zone. Drop files (and optionally folders)\n"
+        "onto the widget, or click it to open the browser's native\n"
+        "picker. Files queue up and upload sequentially in the background\n"
+        "so the UI stays responsive; per-file lifecycle signals let you\n"
+        "render a queue / progress list.\n"
+        "\n"
+        "    drop = container.add_widget(wt.WFileDropWidget())\n"
+        "    drop.add_widget(wt.WText('Drop files here'))\n"
+        "    def on_drop(files):\n"
+        "        for f in files:\n"
+        "            print('queued:', f.client_file_name)\n"
+        "    drop.drop.connect(on_drop)\n"
+        "    def on_done(f):\n"
+        "        shutil.move(f.uploaded_file.spool_file_name, '/store/' + f.client_file_name)\n"
+        "    drop.uploaded.connect(on_done)\n"
+        "\n"
+        "Inherits WContainerWidget — child widgets become the visible\n"
+        "body (instructions, an icon, …). Uploaded bytes land in a temp\n"
+        "spool file; copy or move them somewhere durable before the file\n"
+        "is dropped from `uploads`.");
     drop_cls
-        .def(heap_init<Wt::WFileDropWidget>())
+        .def(heap_init<Wt::WFileDropWidget>(),
+             "Construct an empty drop zone that accepts files (not\n"
+             "folders) and shows the browser's file picker on click.")
         .def_prop_ro("uploads", &Wt::WFileDropWidget::uploads,
                      "List[File] — all files known to the widget, including "
                      "ones whose upload is queued, in progress, completed, "
@@ -167,7 +227,9 @@ void register_filedrop(nb::module_& m) {
              "Release Directory bookkeeping once you no longer need it. "
              "Files themselves remain.")
         .def("set_accept_drops", &Wt::WFileDropWidget::setAcceptDrops,
-             "enable"_a)
+             "enable"_a,
+             "When True (the default), drag-and-drop is active. Set to\n"
+             "False to limit input to the click-to-pick path.")
         .def("set_filters", &Wt::WFileDropWidget::setFilters,
              "accept_attributes"_a,
              "Hint to the file-picker dialog: a comma-separated list of "
@@ -189,12 +251,15 @@ void register_filedrop(nb::module_& m) {
              "FilePickerType.FileSelection (default), .DirectorySelection, "
              "or .None_ to disable.")
         .def_prop_ro("on_click_file_picker",
-                     &Wt::WFileDropWidget::onClickFilePicker)
+                     &Wt::WFileDropWidget::onClickFilePicker,
+                     "The FilePickerType the widget opens on click.")
         .def("open_file_picker", &Wt::WFileDropWidget::openFilePicker,
              "Programmatically open the file picker as if the user clicked. "
              "Useful when wiring the widget to an external button.")
         .def("open_directory_picker",
-             &Wt::WFileDropWidget::openDirectoryPicker)
+             &Wt::WFileDropWidget::openDirectoryPicker,
+             "Programmatically open the directory picker. Requires that\n"
+             "`set_accept_directories(True)` has been set.")
         .def("set_accept_directories",
              &Wt::WFileDropWidget::setAcceptDirectories,
              "enable"_a, "recursive"_a = false,

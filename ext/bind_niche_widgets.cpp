@@ -13,24 +13,39 @@
 namespace witty_for_python {
 
 void register_niche_widgets(nb::module_& m) {
-    // ---- WQrCode ----
-    //
-    // Renders a QR code as a painted widget. Inherits WPaintedWidget in
-    // C++ but, like the charts, we bind it as inheriting WInteractWidget
-    // directly to avoid the PyPaintedWidget Python-type mismatch. The
-    // built-in paintEvent handles all rendering — users just set the
-    // message + style.
+    // Inherits WPaintedWidget in C++ but bound as inheriting WInteractWidget
+    // directly (the same approach as the charts) to avoid the PyPaintedWidget
+    // Python-type mismatch. The built-in paintEvent handles all rendering.
 
-    nb::enum_<Wt::WQrCode::ErrorCorrectionLevel>(m, "ErrorCorrectionLevel")
-        .value("Low",      Wt::WQrCode::ErrorCorrectionLevel::LOW)
-        .value("Medium",   Wt::WQrCode::ErrorCorrectionLevel::MEDIUM)
-        .value("Quartile", Wt::WQrCode::ErrorCorrectionLevel::QUARTILE)
-        .value("High",     Wt::WQrCode::ErrorCorrectionLevel::HIGH);
+    nb::enum_<Wt::WQrCode::ErrorCorrectionLevel>(m, "ErrorCorrectionLevel",
+        "QR-code error-correction strength. Higher levels can survive\n"
+        "more damage to the printed code but encode less data per pixel.")
+        .value("Low",      Wt::WQrCode::ErrorCorrectionLevel::LOW,
+               "~7% of codewords can be restored.")
+        .value("Medium",   Wt::WQrCode::ErrorCorrectionLevel::MEDIUM,
+               "~15% recoverable.")
+        .value("Quartile", Wt::WQrCode::ErrorCorrectionLevel::QUARTILE,
+               "~25% recoverable.")
+        .value("High",     Wt::WQrCode::ErrorCorrectionLevel::HIGH,
+               "~30% recoverable.");
 
-    nb::class_<Wt::WQrCode, Wt::WInteractWidget>(m, "WQrCode")
-        .def(heap_init<Wt::WQrCode>())
+    nb::class_<Wt::WQrCode, Wt::WInteractWidget>(m, "WQrCode",
+        "A painted QR code. Encodes a text message as a 2D barcode and\n"
+        "renders it as a vector image — scales cleanly to any size.\n"
+        "\n"
+        "    qr = container.add_widget(wt.WQrCode('https://example.com', 4))\n"
+        "    qr.brush = wt.WBrush(wt.WColor(0, 64, 128))\n"
+        "\n"
+        "If the message is too long for the configured error-correction\n"
+        "level, the `error` flag turns True — drop to a lower ECL or\n"
+        "shorten the input.")
+        .def(heap_init<Wt::WQrCode>(),
+             "Construct an empty QR code. Set `message` and `square_size`\n"
+             "before adding to a container.")
         .def(heap_init<Wt::WQrCode, const std::string&, double>(),
-             "message"_a, "square_size"_a)
+             "message"_a, "square_size"_a,
+             "Construct encoding `message`, with each module rendered at\n"
+             "`square_size` pixels and the default error-correction level.")
         .def(heap_init<Wt::WQrCode, const std::string&,
                        Wt::WQrCode::ErrorCorrectionLevel, double>(),
              "message"_a, "ecl"_a, "square_size"_a,
@@ -42,9 +57,13 @@ void register_niche_widgets(nb::module_& m) {
             "The text encoded. Mutating triggers a re-paint.")
         .def_prop_rw("square_size",
             &Wt::WQrCode::squareSize,
-            &Wt::WQrCode::setSquareSize)
+            &Wt::WQrCode::setSquareSize,
+            "Side length in pixels of each QR-code module (the black/white\n"
+            "squares). Larger values make a bigger, easier-to-scan code.")
         .def("set_error_correction_level",
-             &Wt::WQrCode::setErrorCorrectionLevel, "ecl"_a)
+             &Wt::WQrCode::setErrorCorrectionLevel, "ecl"_a,
+             "Replace the active error-correction level. Triggers a\n"
+             "re-encode and re-paint.")
         .def_prop_rw("brush",
             &Wt::WQrCode::brush,
             &Wt::WQrCode::setBrush,
@@ -54,34 +73,49 @@ void register_niche_widgets(nb::module_& m) {
              "True if the encoder couldn't fit the message at the "
              "configured ECL — try Low or shorten the message.")
         .def("update",
-            [](Wt::WQrCode& self) { self.update(); });
+            [](Wt::WQrCode& self) { self.update(); },
+            "Force a re-paint. Normally unnecessary — assignments to\n"
+            "`message` / `brush` / `square_size` re-paint automatically.");
 
-    // ---- WGoogleMap ----
-    //
-    // Embeds Google Maps. Requires a `google_api_key` config property
-    // set at server startup (in Wt's config XML), so the widget renders
-    // an empty/error pane until that's in place.
+    // Requires a `google_api_key` config property set at server startup
+    // (in Wt's config XML). Without it the widget renders an error pane.
 
-    nb::enum_<Wt::GoogleMapsVersion>(m, "GoogleMapsVersion")
-        .value("v3", Wt::GoogleMapsVersion::v3);
+    nb::enum_<Wt::GoogleMapsVersion>(m, "GoogleMapsVersion",
+        "Google Maps JavaScript API version to load.")
+        .value("v3", Wt::GoogleMapsVersion::v3,
+               "The current (v3) Maps JS API.");
 
-    nb::enum_<Wt::MapTypeControl>(m, "MapTypeControl")
-        .value("None_",         Wt::MapTypeControl::None)
-        .value("Default",       Wt::MapTypeControl::Default)
-        .value("Menu",          Wt::MapTypeControl::Menu)
-        .value("Hierarchical",  Wt::MapTypeControl::Hierarchical)
-        .value("HorizontalBar", Wt::MapTypeControl::HorizontalBar);
+    nb::enum_<Wt::MapTypeControl>(m, "MapTypeControl",
+        "Style of the map-type selector (roadmap / satellite / hybrid /\n"
+        "terrain switch) rendered over the Google Map.")
+        .value("None_",         Wt::MapTypeControl::None,
+               "Hide the selector entirely.")
+        .value("Default",       Wt::MapTypeControl::Default,
+               "Whatever the Maps API uses by default for the device.")
+        .value("Menu",          Wt::MapTypeControl::Menu,
+               "Dropdown menu form.")
+        .value("Hierarchical",  Wt::MapTypeControl::Hierarchical,
+               "Nested button/menu form for compact displays.")
+        .value("HorizontalBar", Wt::MapTypeControl::HorizontalBar,
+               "Horizontal row of pill buttons.");
 
     auto coord_cls = nb::class_<Wt::WGoogleMap::Coordinate>(
-        m, "GoogleMapCoordinate")
-        .def(nb::init<>())
-        .def(nb::init<double, double>(), "latitude"_a, "longitude"_a)
+        m, "GoogleMapCoordinate",
+        "A latitude/longitude pair, used as positions/centres for\n"
+        "WGoogleMap operations. Plain value type — copy freely.")
+        .def(nb::init<>(),
+             "Construct (0, 0) — the null island.")
+        .def(nb::init<double, double>(), "latitude"_a, "longitude"_a,
+             "Construct from explicit latitude and longitude in decimal\n"
+             "degrees (positive N/E, negative S/W).")
         .def_prop_rw("latitude",
             &Wt::WGoogleMap::Coordinate::latitude,
-            &Wt::WGoogleMap::Coordinate::setLatitude)
+            &Wt::WGoogleMap::Coordinate::setLatitude,
+            "Latitude in decimal degrees.")
         .def_prop_rw("longitude",
             &Wt::WGoogleMap::Coordinate::longitude,
-            &Wt::WGoogleMap::Coordinate::setLongitude)
+            &Wt::WGoogleMap::Coordinate::setLongitude,
+            "Longitude in decimal degrees.")
         .def("distance_to", &Wt::WGoogleMap::Coordinate::distanceTo,
              "other"_a,
              "Great-circle distance to `other` in kilometres "
@@ -92,29 +126,51 @@ void register_niche_widgets(nb::module_& m) {
                      + ", lon=" + std::to_string(c.longitude()) + ")";
             });
 
-    auto gmap_cls = nb::class_<Wt::WGoogleMap, Wt::WWidget>(m, "WGoogleMap")
+    auto gmap_cls = nb::class_<Wt::WGoogleMap, Wt::WWidget>(m, "WGoogleMap",
+        "Embedded Google Maps widget. Renders an interactive map served\n"
+        "by the Google Maps JS API and lets server-side Python add markers,\n"
+        "polylines, circles, and info windows.\n"
+        "\n"
+        "    gmap = container.add_widget(wt.WGoogleMap(wt.GoogleMapsVersion.v3))\n"
+        "    gmap.set_center(wt.WGoogleMap.Coordinate(37.7749, -122.4194), 12)\n"
+        "    gmap.add_marker(wt.WGoogleMap.Coordinate(37.7749, -122.4194))\n"
+        "\n"
+        "Requires a Google Maps API key configured server-side via Wt's\n"
+        "config XML (`google_api_key` property). Without it the widget\n"
+        "renders an error pane.")
         // No default value for the version arg — nanobind has trouble
         // casting value-typed defaults (WColor() etc.) at module init.
-        .def(heap_init<Wt::WGoogleMap, Wt::GoogleMapsVersion>(), "version"_a)
+        .def(heap_init<Wt::WGoogleMap, Wt::GoogleMapsVersion>(), "version"_a,
+             "Construct against the given Google Maps API version.")
         .def("set_center",
             nb::overload_cast<const Wt::WGoogleMap::Coordinate&>(
                 &Wt::WGoogleMap::setCenter),
-            "center"_a)
+            "center"_a,
+            "Pan the map so `center` is at the viewport centre. Keeps\n"
+            "the current zoom level.")
         .def("set_center",
             nb::overload_cast<const Wt::WGoogleMap::Coordinate&, int>(
                 &Wt::WGoogleMap::setCenter),
             "center"_a, "zoom"_a,
             "Pan to `center` and set the zoom level in one call.")
-        .def("pan_to", &Wt::WGoogleMap::panTo, "center"_a)
-        .def("set_zoom", &Wt::WGoogleMap::setZoom, "level"_a)
-        .def("zoom_in",  &Wt::WGoogleMap::zoomIn)
-        .def("zoom_out", &Wt::WGoogleMap::zoomOut)
+        .def("pan_to", &Wt::WGoogleMap::panTo, "center"_a,
+             "Smoothly animate the viewport to `center` (vs. the snap-jump\n"
+             "of `set_center`).")
+        .def("set_zoom", &Wt::WGoogleMap::setZoom, "level"_a,
+             "Set the zoom level (integer; ~0 = whole world, ~22 = street\n"
+             "level depending on the area).")
+        .def("zoom_in",  &Wt::WGoogleMap::zoomIn,
+             "Increase the zoom level by one.")
+        .def("zoom_out", &Wt::WGoogleMap::zoomOut,
+             "Decrease the zoom level by one.")
         .def("save_position", &Wt::WGoogleMap::savePosition,
              "Remember the current centre + zoom. Restore with "
              "return_to_saved_position.")
         .def("return_to_saved_position",
-             &Wt::WGoogleMap::returnToSavedPosition)
-        .def("add_marker", &Wt::WGoogleMap::addMarker, "position"_a)
+             &Wt::WGoogleMap::returnToSavedPosition,
+             "Pan/zoom back to whatever was last `save_position`'d.")
+        .def("add_marker", &Wt::WGoogleMap::addMarker, "position"_a,
+             "Drop the default Google-Maps pin at `position`.")
         .def("add_icon_marker", &Wt::WGoogleMap::addIconMarker,
              "position"_a, "icon_url"_a,
              "Marker with a custom icon image at `icon_url`.")
@@ -142,25 +198,27 @@ void register_niche_widgets(nb::module_& m) {
     // Re-attach the Coordinate value type as WGoogleMap.Coordinate.
     gmap_cls.attr("Coordinate") = coord_cls;
 
-    // ---- WLeafletMap ----
-    //
     // OpenStreetMap-backed map widget. Unlike WGoogleMap, no external
     // API key is required — the widget renders tiles fetched directly
     // from an OpenStreetMap (or compatible) tile server, configured
-    // via add_tile_layer. Markers, popups, and tooltips are added via
-    // add_marker / add_popup / add_tooltip, taking the corresponding
-    // nested classes below.
+    // via add_tile_layer.
 
     auto leaflet_coord_cls = nb::class_<Wt::WLeafletMap::Coordinate>(
-        m, "LeafletMapCoordinate")
-        .def(nb::init<>())
-        .def(nb::init<double, double>(), "latitude"_a, "longitude"_a)
+        m, "LeafletMapCoordinate",
+        "A latitude/longitude pair used as the position for WLeafletMap\n"
+        "items. Plain value type — copy freely.")
+        .def(nb::init<>(),
+             "Construct (0, 0).")
+        .def(nb::init<double, double>(), "latitude"_a, "longitude"_a,
+             "Construct from explicit decimal-degree latitude and longitude.")
         .def_prop_rw("latitude",
             &Wt::WLeafletMap::Coordinate::latitude,
-            &Wt::WLeafletMap::Coordinate::setLatitude)
+            &Wt::WLeafletMap::Coordinate::setLatitude,
+            "Latitude in decimal degrees.")
         .def_prop_rw("longitude",
             &Wt::WLeafletMap::Coordinate::longitude,
-            &Wt::WLeafletMap::Coordinate::setLongitude)
+            &Wt::WLeafletMap::Coordinate::setLongitude,
+            "Longitude in decimal degrees.")
         .def("__repr__",
             [](const Wt::WLeafletMap::Coordinate& c) {
                 return "LeafletMapCoordinate(lat=" + std::to_string(c.latitude())
@@ -185,12 +243,16 @@ void register_niche_widgets(nb::module_& m) {
 
     auto map_item_cls =
         nb::class_<Wt::WLeafletMap::AbstractMapItem, Wt::WObject>(
-            m, "WLeafletMapAbstractMapItem")
+            m, "WLeafletMapAbstractMapItem",
+            "Abstract base for anything placed on a WLeafletMap — markers,\n"
+            "popups, tooltips. Holds a coordinate and the standard set of\n"
+            "mouse-interaction signals.")
         .def("move", &Wt::WLeafletMap::AbstractMapItem::move, "pos"_a,
              "Move the item to a new coordinate. Triggers a re-render "
              "if the item is already attached to a map.")
         .def_prop_ro("position",
-            &Wt::WLeafletMap::AbstractMapItem::position)
+            &Wt::WLeafletMap::AbstractMapItem::position,
+            "The item's current coordinate.")
         .def_prop_ro("clicked",
             &Wt::WLeafletMap::AbstractMapItem::clicked,
             nb::rv_policy::reference_internal,
@@ -198,24 +260,31 @@ void register_niche_widgets(nb::module_& m) {
             "(Popup, Tooltip), `interactive` must be set in options.")
         .def_prop_ro("double_clicked",
             &Wt::WLeafletMap::AbstractMapItem::doubleClicked,
-            nb::rv_policy::reference_internal)
+            nb::rv_policy::reference_internal,
+            "Signal[] — user double-clicked the item.")
         .def_prop_ro("mouse_went_down",
             &Wt::WLeafletMap::AbstractMapItem::mouseWentDown,
-            nb::rv_policy::reference_internal)
+            nb::rv_policy::reference_internal,
+            "Signal[] — mouse button pressed over the item.")
         .def_prop_ro("mouse_went_up",
             &Wt::WLeafletMap::AbstractMapItem::mouseWentUp,
-            nb::rv_policy::reference_internal)
+            nb::rv_policy::reference_internal,
+            "Signal[] — mouse button released over the item.")
         .def_prop_ro("mouse_went_over",
             &Wt::WLeafletMap::AbstractMapItem::mouseWentOver,
-            nb::rv_policy::reference_internal)
+            nb::rv_policy::reference_internal,
+            "Signal[] — cursor entered the item.")
         .def_prop_ro("mouse_went_out",
             &Wt::WLeafletMap::AbstractMapItem::mouseWentOut,
-            nb::rv_policy::reference_internal);
+            nb::rv_policy::reference_internal,
+            "Signal[] — cursor left the item.");
 
     auto overlay_cls =
         nb::class_<Wt::WLeafletMap::AbstractOverlayItem,
                    Wt::WLeafletMap::AbstractMapItem>(
-            m, "WLeafletMapAbstractOverlayItem")
+            m, "WLeafletMapAbstractOverlayItem",
+            "Common base for Popup and Tooltip — overlay items that hold a\n"
+            "content widget and can be opened/closed.")
         .def("set_options",
             &Wt::WLeafletMap::AbstractOverlayItem::setOptions,
             "options"_a,
@@ -241,19 +310,24 @@ void register_niche_widgets(nb::module_& m) {
             "text"_a,
             "Convenience: set content to a WText wrapping the given "
             "string. Same effect as set_content(WText(text)).")
-        .def("open",   &Wt::WLeafletMap::AbstractOverlayItem::open)
-        .def("close",  &Wt::WLeafletMap::AbstractOverlayItem::close)
-        .def("toggle", &Wt::WLeafletMap::AbstractOverlayItem::toggle)
+        .def("open",   &Wt::WLeafletMap::AbstractOverlayItem::open,
+             "Show the overlay programmatically.")
+        .def("close",  &Wt::WLeafletMap::AbstractOverlayItem::close,
+             "Hide the overlay programmatically.")
+        .def("toggle", &Wt::WLeafletMap::AbstractOverlayItem::toggle,
+             "Flip between open and closed.")
         .def_prop_ro("is_open",
-            &Wt::WLeafletMap::AbstractOverlayItem::isOpen)
+            &Wt::WLeafletMap::AbstractOverlayItem::isOpen,
+            "True if the overlay is currently visible.")
         .def_prop_ro("opened_signal",
             &Wt::WLeafletMap::AbstractOverlayItem::opened,
-            nb::rv_policy::reference_internal)
+            nb::rv_policy::reference_internal,
+            "Signal[] — fires when the overlay transitions to open.")
         .def_prop_ro("closed_signal",
             &Wt::WLeafletMap::AbstractOverlayItem::closed,
-            nb::rv_policy::reference_internal);
+            nb::rv_policy::reference_internal,
+            "Signal[] — fires when the overlay transitions to closed.");
 
-    // Popup — opens on user interaction (or programmatically via open()).
     // All construction routes go through nb::new_ (heap allocation) so the
     // Popup can later transfer to std::unique_ptr<WLeafletMap::Popup> via
     // Marker.add_popup; nanobind blocks that transfer for nb::init<>-built
@@ -261,9 +335,14 @@ void register_niche_widgets(nb::module_& m) {
     auto popup_cls =
         nb::class_<Wt::WLeafletMap::Popup,
                    Wt::WLeafletMap::AbstractOverlayItem>(
-            m, "WLeafletMapPopup")
+            m, "WLeafletMapPopup",
+            "Floating overlay attached to a coordinate. Typically opens on\n"
+            "marker click (when added via Marker.add_popup) or programmatically\n"
+            "via open(). Content is either a WText shortcut or any widget.")
         .def(heap_init<Wt::WLeafletMap::Popup,
-                       const Wt::WLeafletMap::Coordinate&>(), "pos"_a)
+                       const Wt::WLeafletMap::Coordinate&>(), "pos"_a,
+             "Construct an empty popup anchored at `pos`. Set content\n"
+             "later via set_content / set_content_text.")
         .def(heap_init<Wt::WLeafletMap::Popup, const Wt::WString&>(),
              "content"_a,
              "Shortcut: popup whose content is a WText wrapping the "
@@ -271,7 +350,8 @@ void register_niche_widgets(nb::module_& m) {
         .def(heap_init<Wt::WLeafletMap::Popup,
                        const Wt::WLeafletMap::Coordinate&,
                        const Wt::WString&>(),
-             "pos"_a, "content"_a)
+             "pos"_a, "content"_a,
+             "Construct anchored at `pos` with the given text as content.")
         .def(nb::new_(
                 [](const Wt::WLeafletMap::Coordinate& pos,
                    std::unique_ptr<Wt::WWidget> content) {
@@ -282,32 +362,43 @@ void register_niche_widgets(nb::module_& m) {
             "Popup at `pos` with a widget content. Ownership of "
             "`content` transfers.");
 
-    // Tooltip — like Popup but typically shown on hover.
     auto tooltip_cls =
         nb::class_<Wt::WLeafletMap::Tooltip,
                    Wt::WLeafletMap::AbstractOverlayItem>(
-            m, "WLeafletMapTooltip")
+            m, "WLeafletMapTooltip",
+            "Floating label attached to a coordinate. Like Popup but\n"
+            "typically shown on hover instead of click. Same content API\n"
+            "(string-shortcut or arbitrary widget).")
         .def(heap_init<Wt::WLeafletMap::Tooltip,
-                       const Wt::WLeafletMap::Coordinate&>(), "pos"_a)
+                       const Wt::WLeafletMap::Coordinate&>(), "pos"_a,
+             "Construct an empty tooltip anchored at `pos`.")
         .def(heap_init<Wt::WLeafletMap::Tooltip, const Wt::WString&>(),
-             "content"_a)
+             "content"_a,
+             "Shortcut: tooltip whose content is a WText wrapping the\n"
+             "given string.")
         .def(heap_init<Wt::WLeafletMap::Tooltip,
                        const Wt::WLeafletMap::Coordinate&,
                        const Wt::WString&>(),
-             "pos"_a, "content"_a)
+             "pos"_a, "content"_a,
+             "Construct anchored at `pos` with the given text as content.")
         .def(nb::new_(
                 [](const Wt::WLeafletMap::Coordinate& pos,
                    std::unique_ptr<Wt::WWidget> content) {
                     return std::make_unique<Wt::WLeafletMap::Tooltip>(
                         pos, std::move(content));
                 }),
-            "pos"_a, "content"_a);
+            "pos"_a, "content"_a,
+            "Tooltip at `pos` with a widget content. Ownership of\n"
+            "`content` transfers.");
 
-    // Marker (abstract — concrete subclasses below).
+    // Concrete subclasses (LeafletMarker, WidgetMarker) follow below.
     auto marker_cls =
         nb::class_<Wt::WLeafletMap::Marker,
                    Wt::WLeafletMap::AbstractMapItem>(
-            m, "WLeafletMapMarker")
+            m, "WLeafletMapMarker",
+            "Abstract base for map markers. Carries an optional Popup and\n"
+            "Tooltip; concrete subclasses (LeafletMarker, WidgetMarker)\n"
+            "decide what's actually rendered at the marker's position.")
         .def("add_popup",
             [](Wt::WLeafletMap::Marker& self, nb::object py_popup)
                 -> nb::object {
@@ -327,7 +418,8 @@ void register_niche_widgets(nb::module_& m) {
                 // it (the popup wrapper it held is still valid, just
                 // detached).
                 self.removePopup();
-            })
+            },
+            "Detach the currently-attached popup, if any.")
         .def_prop_ro("popup",
             [](Wt::WLeafletMap::Marker& self) { return self.popup(); },
             nb::rv_policy::reference_internal,
@@ -346,16 +438,19 @@ void register_niche_widgets(nb::module_& m) {
             "Attach a tooltip that appears on hover. Replaces any "
             "previously-added tooltip.")
         .def("remove_tooltip",
-            [](Wt::WLeafletMap::Marker& self) { self.removeTooltip(); })
+            [](Wt::WLeafletMap::Marker& self) { self.removeTooltip(); },
+            "Detach the currently-attached tooltip, if any.")
         .def_prop_ro("tooltip",
             [](Wt::WLeafletMap::Marker& self) { return self.tooltip(); },
-            nb::rv_policy::reference_internal);
+            nb::rv_policy::reference_internal,
+            "Current tooltip, or None if none is attached.");
 
-    // LeafletMarker — the default Leaflet pin.
     auto leaflet_marker_cls =
         nb::class_<Wt::WLeafletMap::LeafletMarker,
                    Wt::WLeafletMap::Marker>(
-            m, "WLeafletMapLeafletMarker")
+            m, "WLeafletMapLeafletMarker",
+            "Marker rendered as the default Leaflet pin. The standard\n"
+            "round-headed marker drop you get from leafletjs by default.")
         .def(heap_init<Wt::WLeafletMap::LeafletMarker,
                        const Wt::WLeafletMap::Coordinate&>(), "pos"_a,
              "Construct the standard Leaflet pin marker.")
@@ -364,11 +459,13 @@ void register_niche_widgets(nb::module_& m) {
              "Leaflet marker options (icon, draggable, riseOnHover, …). "
              "See https://leafletjs.com/reference.html#marker.");
 
-    // WidgetMarker — render the marker as an arbitrary Wt widget.
     auto widget_marker_cls =
         nb::class_<Wt::WLeafletMap::WidgetMarker,
                    Wt::WLeafletMap::Marker>(
-            m, "WLeafletMapWidgetMarker")
+            m, "WLeafletMapWidgetMarker",
+            "Marker rendered as an arbitrary Wt widget — pin yourself a\n"
+            "WImage, a WText, a WContainerWidget with custom HTML, etc.\n"
+            "Useful when the default Leaflet pin isn't enough.")
         .def(nb::new_(
                 [](const Wt::WLeafletMap::Coordinate& pos,
                    std::unique_ptr<Wt::WWidget> widget) {
@@ -383,15 +480,34 @@ void register_niche_widgets(nb::module_& m) {
             [](Wt::WLeafletMap::WidgetMarker& self) {
                 return self.widget();
             },
-            nb::rv_policy::reference_internal)
+            nb::rv_policy::reference_internal,
+            "The widget rendered at the marker's position.")
         .def("set_anchor_point",
              &Wt::WLeafletMap::WidgetMarker::setAnchorPoint, "x"_a, "y"_a,
              "Anchor (the 'tip' of the marker relative to its top-left "
              "corner) in pixels. Negative x = horizontal center; "
              "negative y = vertical center. Default is centred both ways.");
 
-    auto leaflet_cls = nb::class_<Wt::WLeafletMap, Wt::WWidget>(m, "WLeafletMap")
-        .def(heap_init<Wt::WLeafletMap>())
+    auto leaflet_cls = nb::class_<Wt::WLeafletMap, Wt::WWidget>(m, "WLeafletMap",
+        "Interactive map widget powered by leafletjs. Unlike WGoogleMap,\n"
+        "no API key is required — the widget renders tiles fetched from\n"
+        "any compatible tile server (OpenStreetMap, Mapbox, etc.) that\n"
+        "you configure via `add_tile_layer`.\n"
+        "\n"
+        "    leaf = container.add_widget(wt.WLeafletMap())\n"
+        "    leaf.add_tile_layer(\n"
+        "        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',\n"
+        "        tile_options)\n"
+        "    leaf.pan_to(wt.WLeafletMap.Coordinate(51.5074, -0.1278))\n"
+        "    leaf.zoom_level = 12\n"
+        "    leaf.add_marker(wt.WLeafletMap.LeafletMarker(\n"
+        "        wt.WLeafletMap.Coordinate(51.5074, -0.1278)))\n"
+        "\n"
+        "Markers, popups, and tooltips are added via add_marker /\n"
+        "add_popup / add_tooltip. Each transfers ownership; the Python\n"
+        "wrapper is re-armed as a non-owning alias so chaining works.")
+        .def(heap_init<Wt::WLeafletMap>(),
+             "Construct an empty map with default options.")
         .def(heap_init<Wt::WLeafletMap, const Wt::Json::Object&>(), "options"_a,
              "Construct with Leaflet map options (e.g. centre, zoom). "
              "Pass a Json.Object (or use the default ctor + set_options).")
@@ -399,7 +515,9 @@ void register_niche_widgets(nb::module_& m) {
             // Overloaded with the marker classes; pick the no-prefix form.
             nb::overload_cast<const Wt::Json::Object&>(
                 &Wt::WLeafletMap::setOptions),
-            "options"_a)
+            "options"_a,
+            "Replace the Leaflet map options. Effective for subsequent\n"
+            "re-renders.")
         .def("add_tile_layer",
             &Wt::WLeafletMap::addTileLayer,
             "url_template"_a, "options"_a,
@@ -408,16 +526,22 @@ void register_niche_widgets(nb::module_& m) {
             "'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'). "
             "`options` is a Json.Object holding Leaflet tile-layer "
             "options (maxZoom, attribution, subdomains, …).")
-        .def("pan_to", &Wt::WLeafletMap::panTo, "center"_a)
+        .def("pan_to", &Wt::WLeafletMap::panTo, "center"_a,
+             "Smoothly animate the viewport so `center` is at the middle\n"
+             "of the visible area.")
         .def_prop_rw("zoom_level",
             &Wt::WLeafletMap::zoomLevel,
-            &Wt::WLeafletMap::setZoomLevel)
+            &Wt::WLeafletMap::setZoomLevel,
+            "Current zoom level (integer). Assigning sets it; mutating\n"
+            "client-side via scroll/pinch reports back via\n"
+            "`zoom_level_changed`.")
         .def_prop_ro("position",
             // Wt has both `position()` const and a setter-via-panTo on
             // the widget; expose the read side as a property.
             [](const Wt::WLeafletMap& m) {
                 return m.position();
-            })
+            },
+            "Current map centre coordinate. Use `pan_to` to set.")
         .def_prop_ro("zoom_level_changed",
             &Wt::WLeafletMap::zoomLevelChanged,
             nb::rv_policy::reference_internal,
@@ -458,7 +582,10 @@ void register_niche_widgets(nb::module_& m) {
                                    /*destruct*/ false);
                 return py_tooltip;
             },
-            "tooltip"_a);
+            "tooltip"_a,
+            "Attach a standalone Tooltip to the map (separate from any\n"
+            "marker). Ownership transfers; the wrapper is re-armed as a\n"
+            "non-owning alias.");
 
     // Re-attach all the nested types under their natural names so users
     // can write wt.WLeafletMap.Marker rather than wt.WLeafletMapMarker.

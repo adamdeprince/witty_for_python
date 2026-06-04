@@ -49,7 +49,10 @@ void register_http_client(nb::module_& m) {
 
     // ---- Http::Method enum ----
 
-    nb::enum_<Wt::Http::Method>(http, "Method")
+    nb::enum_<Wt::Http::Method>(http, "Method",
+        "HTTP method selector for the generic `Client.request(method,\n"
+        "url, message)` call. The method-specific helpers (`get`, `post`,\n"
+        "…) cover the common cases without needing this enum.")
         .value("Get",    Wt::Http::Method::Get)
         .value("Post",   Wt::Http::Method::Post)
         .value("Put",    Wt::Http::Method::Put)
@@ -65,16 +68,25 @@ void register_http_client(nb::module_& m) {
     // a single nb::class_), and re-attach it as `Http.Message.Header`
     // below for documentation symmetry.
 
-    auto header_cls = nb::class_<Wt::Http::Message::Header>(http, "Header")
-        .def(nb::init<>())
+    auto header_cls = nb::class_<Wt::Http::Message::Header>(http, "Header",
+        "A single HTTP header (name, value) pair. Exposed both flat as\n"
+        "`wt.Http.Header` and re-attached as `wt.Http.Message.Header` for\n"
+        "the nested form. Used as the list element returned by\n"
+        "`Message.headers` and accepted by Client's per-call `headers`\n"
+        "parameter.")
+        .def(nb::init<>(),
+             "Construct an empty header with no name or value.")
         .def(nb::init<const std::string&, const std::string&>(),
-             "name"_a, "value"_a)
+             "name"_a, "value"_a,
+             "Construct a header from a `name` / `value` pair.")
         .def_prop_rw("name",
             &Wt::Http::Message::Header::name,
-            &Wt::Http::Message::Header::setName)
+            &Wt::Http::Message::Header::setName,
+            "The header field name (e.g. 'Content-Type').")
         .def_prop_rw("value",
             &Wt::Http::Message::Header::value,
-            &Wt::Http::Message::Header::setValue);
+            &Wt::Http::Message::Header::setValue,
+            "The header field value.");
 
     // ---- Http::Message ----
     //
@@ -84,7 +96,17 @@ void register_http_client(nb::module_& m) {
     // add_body_text() / add_header(). For a response, read it via
     // status, headers, body, and get_header().
 
-    auto message_cls = nb::class_<Wt::Http::Message>(http, "Message")
+    auto message_cls = nb::class_<Wt::Http::Message>(http, "Message",
+        "An HTTP message — headers plus body — usable in both directions.\n"
+        "For outbound requests (POST/PUT/PATCH), build it via the empty\n"
+        "constructor and accumulate headers and body bytes through\n"
+        "`add_header` / `add_body_text`. For responses delivered to the\n"
+        "`Client.on_done` callback, read `status`, `headers`, and `body`.\n"
+        "\n"
+        "    body = wt.Http.Message()\n"
+        "    body.add_header('Content-Type', 'application/json')\n"
+        "    body.add_body_text('{\"hello\": 42}')\n"
+        "    client.post('https://api.example.com/x', body)")
         .def(nb::init<>(),
              "Construct an empty message with status=-1 and no headers.")
         .def(nb::init<std::vector<Wt::Http::Message::Header>, int>(),
@@ -123,16 +145,28 @@ void register_http_client(nb::module_& m) {
         .def("add_body_text", &Wt::Http::Message::addBodyText,
              "text"_a,
              "Append to the outbound request body.")
-        .def("set_status", &Wt::Http::Message::setStatus, "status"_a);
+        .def("set_status", &Wt::Http::Message::setStatus, "status"_a,
+             "Override the status code. Only meaningful when constructing\n"
+             "a synthetic response — outbound requests get their status\n"
+             "from the remote server.");
 
     // ---- Http::Client::URL ----
 
-    auto url_cls = nb::class_<Wt::Http::Client::URL>(http, "ClientURL")
-        .def_ro("protocol", &Wt::Http::Client::URL::protocol)
-        .def_ro("auth", &Wt::Http::Client::URL::auth)
-        .def_ro("host", &Wt::Http::Client::URL::host)
-        .def_ro("port", &Wt::Http::Client::URL::port)
-        .def_ro("path", &Wt::Http::Client::URL::path);
+    auto url_cls = nb::class_<Wt::Http::Client::URL>(http, "ClientURL",
+        "Parsed components of a URL, as produced by `Client.parse_url`.\n"
+        "All fields are read-only views of the parse result; build a URL\n"
+        "string yourself if you need to mutate it.")
+        .def_ro("protocol", &Wt::Http::Client::URL::protocol,
+            "Scheme part of the URL (e.g. 'http', 'https').")
+        .def_ro("auth", &Wt::Http::Client::URL::auth,
+            "Userinfo segment (the 'user:pass' between '://' and '@'),\n"
+            "or empty if absent.")
+        .def_ro("host", &Wt::Http::Client::URL::host,
+            "Hostname or IP address from the URL authority.")
+        .def_ro("port", &Wt::Http::Client::URL::port,
+            "Port number, or the protocol default if not explicit.")
+        .def_ro("path", &Wt::Http::Client::URL::path,
+            "Path + query string portion of the URL.");
 
     // ---- Http::Client ----
     //
@@ -147,7 +181,25 @@ void register_http_client(nb::module_& m) {
     // (e.g. "Connection refused", "Operation timed out") means the
     // request failed and `response` is meaningless.
 
-    auto client_cls = nb::class_<Wt::Http::Client, Wt::WObject>(http, "Client")
+    auto client_cls = nb::class_<Wt::Http::Client, Wt::WObject>(http, "Client",
+        "Asynchronous outbound HTTP client. Issue a request with `get`,\n"
+        "`post`, etc.; the response arrives later on the same I/O service\n"
+        "via the `on_done` callback.\n"
+        "\n"
+        "    client = wt.Http.Client()\n"
+        "    def on_done(err, response):\n"
+        "        if err:\n"
+        "            log.error('fetch failed: %s', err)\n"
+        "            return\n"
+        "        print(response.status, response.body)\n"
+        "    client.on_done(on_done)\n"
+        "    client.get('https://example.com/api')\n"
+        "\n"
+        "Connect callbacks BEFORE calling the request methods — they fire\n"
+        "asynchronously and a fast localhost response can arrive before\n"
+        "control returns. For streaming responses, set\n"
+        "`set_maximum_response_size(0)` and wire `on_body_data_received`\n"
+        "to consume bytes incrementally.")
         .def(nb::new_([]() {
                  return std::make_shared<Wt::Http::Client>();
              }),
@@ -167,7 +219,8 @@ void register_http_client(nb::module_& m) {
              [](const Wt::Http::Client& self) {
                  return std::chrono::duration_cast<
                      std::chrono::duration<double>>(self.timeout()).count();
-             })
+             },
+             "Current per-I/O-operation timeout in seconds.")
         .def("set_maximum_response_size",
              &Wt::Http::Client::setMaximumResponseSize, "bytes"_a,
              "Cap on the in-memory response size (DoS guard). Default 64 "
@@ -175,24 +228,40 @@ void register_http_client(nb::module_& m) {
              "from being accumulated into the HttpMessage — use "
              "on_body_data_received to process chunks incrementally.")
         .def_prop_ro("maximum_response_size",
-             &Wt::Http::Client::maximumResponseSize)
+             &Wt::Http::Client::maximumResponseSize,
+             "Current in-memory response cap in bytes. 0 means unlimited\n"
+             "and disables body accumulation — read chunks via\n"
+             "`on_body_data_received`.")
         .def("set_ssl_certificate_verification_enabled",
              &Wt::Http::Client::setSslCertificateVerificationEnabled,
              "enabled"_a,
              "Verify the server's TLS certificate (https only). Default "
              "True — only disable for testing against self-signed certs.")
         .def_prop_ro("ssl_certificate_verification_enabled",
-             &Wt::Http::Client::isSslCertificateVerificationEnabled)
+             &Wt::Http::Client::isSslCertificateVerificationEnabled,
+             "Whether the client is currently verifying TLS certificates.")
         .def("set_ssl_verify_file", &Wt::Http::Client::setSslVerifyFile,
-             "path"_a)
+             "path"_a,
+             "Use a single PEM-encoded CA bundle file as the trust root\n"
+             "for TLS verification. Pairs with\n"
+             "`set_ssl_certificate_verification_enabled(True)`.")
         .def("set_ssl_verify_path", &Wt::Http::Client::setSslVerifyPath,
-             "path"_a)
+             "path"_a,
+             "Use a directory of PEM-encoded CA certificates as the trust\n"
+             "root for TLS verification.")
         .def("set_follow_redirect", &Wt::Http::Client::setFollowRedirect,
-             "follow"_a)
-        .def_prop_ro("follow_redirect", &Wt::Http::Client::followRedirect)
+             "follow"_a,
+             "When True, the client transparently follows 3xx responses\n"
+             "up to `max_redirects` times. Off by default — the redirect\n"
+             "response is delivered to `on_done` as-is.")
+        .def_prop_ro("follow_redirect", &Wt::Http::Client::followRedirect,
+             "Whether 3xx redirects are followed automatically.")
         .def("set_max_redirects", &Wt::Http::Client::setMaxRedirects,
-             "max_redirects"_a)
-        .def_prop_ro("max_redirects", &Wt::Http::Client::maxRedirects)
+             "max_redirects"_a,
+             "Cap on consecutive 3xx hops before the client gives up.\n"
+             "Only consulted when `follow_redirect` is True.")
+        .def_prop_ro("max_redirects", &Wt::Http::Client::maxRedirects,
+             "Current cap on follow_redirect hops.")
         // ---- request-issuing methods ----
         .def("get",
              [](Wt::Http::Client& self, const std::string& url) {
@@ -213,14 +282,18 @@ void register_http_client(nb::module_& m) {
              [](Wt::Http::Client& self, const std::string& url) {
                  return self.head(url);
              },
-             "url"_a)
+             "url"_a,
+             "Start an async HEAD. Returns True if the request was\n"
+             "scheduled. The response delivered to `on_done` has headers\n"
+             "but an empty body, per the HEAD contract.")
         .def("post",
              &Wt::Http::Client::post,
              "url"_a, "message"_a,
              "POST. Build the request body as an HttpMessage first.")
         .def("put",
              &Wt::Http::Client::put,
-             "url"_a, "message"_a)
+             "url"_a, "message"_a,
+             "Start an async PUT with `message` as the request body.")
         .def("delete_request",
              &Wt::Http::Client::deleteRequest,
              "url"_a, "message"_a,
@@ -228,7 +301,8 @@ void register_http_client(nb::module_& m) {
              "a Python keyword.")
         .def("patch",
              &Wt::Http::Client::patch,
-             "url"_a, "message"_a)
+             "url"_a, "message"_a,
+             "Start an async PATCH with `message` as the request body.")
         .def("request",
              &Wt::Http::Client::request,
              "method"_a, "url"_a, "message"_a,

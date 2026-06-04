@@ -15,16 +15,23 @@ namespace witty_for_python {
 void register_modelview_proxy(nb::module_& m) {
     // ---- WAbstractProxyModel (abstract base) ----
     //
-    // Proxy models sit between a source WAbstractItemModel and one or more
-    // views, transforming what the view sees without disturbing the source
-    // (sorted, filtered, read-only, aggregated, …). The set_source_model
-    // call wires the chain up; views attach to the proxy, not the source.
-    //
     // Bound non-constructible — concrete subclasses are what callers
     // instantiate.
 
     nb::class_<Wt::WAbstractProxyModel, Wt::WAbstractItemModel>(
-        m, "WAbstractProxyModel")
+        m, "WAbstractProxyModel",
+        "Base class for models that wrap another model and present a\n"
+        "transformed view of it. Sort/filter, read-only-isation, identity\n"
+        "pass-through and similar adapters all derive from this. Set the\n"
+        "underlying model via `source_model`, then attach a view to the\n"
+        "PROXY (not the source) so it sees the transformed rows.\n"
+        "\n"
+        "    proxy = wt.WSortFilterProxyModel()\n"
+        "    proxy.source_model = base_model\n"
+        "    table_view.model = proxy\n"
+        "\n"
+        "Use `map_from_source` / `map_to_source` to translate WModelIndex\n"
+        "values between the two coordinate systems.")
         .def_prop_rw("source_model",
             // The shared_ptr getter is on the value side; the setter is
             // virtual on each subclass — Wt resolves it polymorphically.
@@ -35,54 +42,75 @@ void register_modelview_proxy(nb::module_& m) {
                const std::shared_ptr<Wt::WAbstractItemModel>& m) {
                 self.setSourceModel(m);
             },
-            "The wrapped model. Setting it disconnects from the previous "
+            "The wrapped model. Setting it disconnects from the previous\n"
             "source and rewires the proxy.")
         .def("map_from_source", &Wt::WAbstractProxyModel::mapFromSource,
              "source_index"_a,
-             "Translate a source-model index to the proxy's coordinate "
-             "system (sorted/filtered/etc. position).")
+             "Translate a source-model index to the proxy's coordinate\n"
+             "system (sorted/filtered/etc. position). Returns an invalid\n"
+             "index if the source row is filtered out.")
         .def("map_to_source", &Wt::WAbstractProxyModel::mapToSource,
              "proxy_index"_a,
-             "Translate a proxy index back to the source model. Required "
+             "Translate a proxy index back to the source model. Required\n"
              "when handing a clicked index back to source-specific logic.");
 
     // ---- WIdentityProxyModel: pass-through ----
-    //
-    // Forwards every method to the source unchanged. Useful as a base for
-    // a custom proxy subclass that overrides one or two methods (e.g. a
-    // role re-mapper) — and on its own as a placeholder.
 
     nb::class_<Wt::WIdentityProxyModel, Wt::WAbstractProxyModel>(
-        m, "WIdentityProxyModel")
-        .def(heap_init<Wt::WIdentityProxyModel>());
+        m, "WIdentityProxyModel",
+        "Proxy that forwards every call to the source model unchanged.\n"
+        "Useful as a starting point for a custom subclass that only\n"
+        "tweaks one or two methods (a data-role rewriter, for instance),\n"
+        "or as a placeholder when an API requires a proxy but no\n"
+        "transformation is needed yet.")
+        .def(heap_init<Wt::WIdentityProxyModel>(),
+             "Construct an empty identity proxy; assign `source_model`\n"
+             "to wire it up.");
 
     // ---- WReadOnlyProxyModel: strips edit capability ----
-    //
-    // Forwards every read to the source; refuses every setData /
-    // setHeaderData / insert / remove. Cheap way to expose a model to a
-    // view that must not edit it (e.g. a preview pane).
 
     nb::class_<Wt::WReadOnlyProxyModel, Wt::WAbstractProxyModel>(
-        m, "WReadOnlyProxyModel")
-        .def(heap_init<Wt::WReadOnlyProxyModel>());
+        m, "WReadOnlyProxyModel",
+        "Proxy that forwards reads to the source but refuses every\n"
+        "mutation (setData, setHeaderData, insertRows, removeRows, …).\n"
+        "Cheap way to hand a model to a view that must not be allowed to\n"
+        "edit it — e.g. a preview pane that shares its underlying data\n"
+        "with an editable master view.\n"
+        "\n"
+        "    readonly = wt.WReadOnlyProxyModel()\n"
+        "    readonly.source_model = shared_model\n"
+        "    preview.model = readonly")
+        .def(heap_init<Wt::WReadOnlyProxyModel>(),
+             "Construct an empty read-only proxy; assign `source_model`\n"
+             "to wire it up.");
 
     // ---- WSortFilterProxyModel: sorts and filters rows ----
-    //
-    // The headline proxy. Hook a source model, set a column to filter on,
-    // give it a regex, optionally specify the sort role/column — the view
-    // sees only matching rows in the requested order.
-    //
-    // The C++ setFilterRegExp takes a unique_ptr<std::regex>; from Python
-    // we accept a string and build the std::regex internally. Pass the
-    // empty string to disable filtering.
 
     nb::class_<Wt::WSortFilterProxyModel, Wt::WAbstractProxyModel>(
-        m, "WSortFilterProxyModel")
-        .def(heap_init<Wt::WSortFilterProxyModel>())
+        m, "WSortFilterProxyModel",
+        "Proxy that hides rows whose `filter_key_column` value does not\n"
+        "match a regex, and optionally re-orders the rows it does keep.\n"
+        "Operates on the rows directly under whatever root index the\n"
+        "view is showing.\n"
+        "\n"
+        "    proxy = wt.WSortFilterProxyModel()\n"
+        "    proxy.source_model = people_model\n"
+        "    proxy.filter_key_column = 1                 # surname column\n"
+        "    proxy.set_filter_regexp('.*smith.*')\n"
+        "    proxy.dynamic_sort_filter = True\n"
+        "    proxy.sort(0, wt.SortOrder.Ascending)       # by first name\n"
+        "    table_view.model = proxy\n"
+        "\n"
+        "The filter regex is implemented with std::regex (ECMAScript\n"
+        "flavour) and applied as a full-string match — see\n"
+        "`set_filter_regexp` for details.")
+        .def(heap_init<Wt::WSortFilterProxyModel>(),
+             "Construct an empty proxy. Assign `source_model`, then set\n"
+             "filter/sort parameters as needed.")
         .def_prop_rw("filter_key_column",
             &Wt::WSortFilterProxyModel::filterKeyColumn,
             &Wt::WSortFilterProxyModel::setFilterKeyColumn,
-            "Column index in the source model whose values are matched "
+            "Column index in the source model whose values are matched\n"
             "against the filter regex. Default 0.")
         .def("set_filter_regexp",
             // Build a unique_ptr<std::regex> inside the lambda; pass nullptr
@@ -96,34 +124,35 @@ void register_modelview_proxy(nb::module_& m) {
                 }
             },
             "pattern"_a,
-            "Set the regex pattern applied to the filter column. Empty "
-            "string disables filtering. Wt uses std::regex_match (FULL-"
-            "STRING match, not substring search), ECMAScript flavour — to "
-            "search for a substring, wrap with wildcards: `.*foo.*`. "
-            "Re-runs the filter immediately when `dynamic_sort_filter` is "
+            "Set the regex pattern applied to the filter column. Empty\n"
+            "string disables filtering. Wt uses std::regex_match (FULL-\n"
+            "STRING match, not substring search), ECMAScript flavour — to\n"
+            "search for a substring, wrap with wildcards: `.*foo.*`.\n"
+            "Re-runs the filter immediately when `dynamic_sort_filter` is\n"
             "True; otherwise call `invalidate()` afterward.")
         .def_prop_rw("filter_role",
             &Wt::WSortFilterProxyModel::filterRole,
             &Wt::WSortFilterProxyModel::setFilterRole,
-            "Data role read from the filter column before matching against "
+            "Data role read from the filter column before matching against\n"
             "the regex. Default Display.")
         .def_prop_rw("sort_role",
             &Wt::WSortFilterProxyModel::sortRole,
             &Wt::WSortFilterProxyModel::setSortRole,
-            "Data role read when comparing rows during sort. Default "
+            "Data role read when comparing rows during sort. Default\n"
             "Display.")
         .def_prop_ro("sort_column", &Wt::WSortFilterProxyModel::sortColumn,
             "Current sort column, or -1 when sort() has not been called.")
-        .def_prop_ro("sort_order", &Wt::WSortFilterProxyModel::sortOrder)
+        .def_prop_ro("sort_order", &Wt::WSortFilterProxyModel::sortOrder,
+            "Current SortOrder in effect (Ascending or Descending).")
         .def_prop_rw("dynamic_sort_filter",
             &Wt::WSortFilterProxyModel::dynamicSortFilter,
             &Wt::WSortFilterProxyModel::setDynamicSortFilter,
-            "When True, the proxy re-runs filter + sort whenever the "
-            "source model changes. False (default) requires an explicit "
+            "When True, the proxy re-runs filter + sort whenever the\n"
+            "source model changes. False (default) requires an explicit\n"
             "invalidate() call after modifications.")
         .def("invalidate", &Wt::WSortFilterProxyModel::invalidate,
-            "Force a re-evaluation of filter + sort against the current "
-            "source data. Needed after source mutations when "
+            "Force a re-evaluation of filter + sort against the current\n"
+            "source data. Needed after source mutations when\n"
             "dynamic_sort_filter is False.")
         .def("sort",
              [](Wt::WSortFilterProxyModel& self, int column,

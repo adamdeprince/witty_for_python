@@ -80,7 +80,6 @@ one when an IDE annoyance bites hard enough.
 | Item | What it gets us | Estimated effort |
 |---|---|---|
 | Type `Signal.connect` callables per payload | `IntSignal.connect` currently takes a bare `Callable`; IDEs can't infer the slot's payload type. Rewrite via post-pass in `scripts/regenerate_stubs.py` to `Callable[[int], object] \| Callable[[], object]` per signal class — the disjunction matches `signal_helpers.hpp::py_connect`'s arity-based dispatch. Already prototyped; payload table is in the script's git history. **Biggest single IDE quality win — affects ~30 `connect` methods.** | half day |
-| Add docstrings to bound properties | ~998 of ~1275 methods have no docstring. nanobind-stubgen pulls them through from the `.def(..., "docstring")` arg, so the fix is per-binding edits in `ext/bind_*.cpp`. Properties (`def_prop_rw`/`def_prop_ro`) are the worst offenders. | rolling |
 | Type `WServer.add_entry_point`'s factory | Currently `factory: object`; should be `Callable[[WEnvironment], WApplication]`. One line in the post-pass. | trivial |
 | Type `WPaintedWidget`'s paint callback | Currently `paint: Callable`; should be `Callable[[WPainter], None]`. | trivial |
 | Add a mypy / pyright smoke test | A small `tests/test_ide.py` that runs `mypy --strict` over a handful of canonical fluent chains (`c.add_widget(btn).clicked.connect(handler)`) and fails CI if the inferred type erodes. | half day |

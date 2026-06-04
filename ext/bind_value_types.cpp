@@ -46,16 +46,29 @@ void register_value_types(nb::module_& m) {
     // "auto", "50%", "12px", "1em" — handy when working with existing
     // CSS values.
 
-    nb::class_<Wt::WLength>(m, "WLength")
+    nb::class_<Wt::WLength>(m, "WLength",
+        "A CSS length — a numeric value paired with a LengthUnit, or the\n"
+        "special `'auto'` placeholder. Used everywhere Wt accepts a width,\n"
+        "height, margin, or column dimension. Most APIs that take a length\n"
+        "also accept a bare float (interpreted as pixels); reach for\n"
+        "WLength when you need a non-pixel unit.\n"
+        "\n"
+        "    panel.set_width(wt.WLength(50, wt.LengthUnit.Percentage))\n"
+        "    margin = wt.WLength('1.5em')           # parsed CSS")
         .def(nb::init<>(),
              "Default-construct as 'auto' (no explicit length).")
         .def(nb::init<double, Wt::LengthUnit>(),
-             "value"_a, "unit"_a = Wt::LengthUnit::Pixel)
+             "value"_a, "unit"_a = Wt::LengthUnit::Pixel,
+             "Construct from a numeric value and a unit (defaults to\n"
+             "pixels).")
         .def(nb::init<const std::string&>(), "css_text"_a,
              "Parse a CSS length string — e.g. 'auto', '50%', '12px', '1em'.")
-        .def_prop_ro("is_auto", &Wt::WLength::isAuto)
-        .def_prop_ro("value", &Wt::WLength::value)
-        .def_prop_ro("unit", &Wt::WLength::unit)
+        .def_prop_ro("is_auto", &Wt::WLength::isAuto,
+             "True if this is the `'auto'` (default-constructed) length.")
+        .def_prop_ro("value", &Wt::WLength::value,
+             "The numeric component — pair with `unit` to interpret.")
+        .def_prop_ro("unit", &Wt::WLength::unit,
+             "The LengthUnit that scales `value`.")
         .def("to_css_text", &Wt::WLength::cssText,
             "Render as a CSS string Wt's renderer can use.")
         .def("to_pixels", &Wt::WLength::toPixels,
@@ -99,7 +112,19 @@ void register_value_types(nb::module_& m) {
     // taking ctor are available. We expose a Python-side single-effect
     // shortcut via the int-flag pattern used elsewhere in the binding.
 
-    nb::class_<Wt::WAnimation>(m, "WAnimation")
+    nb::class_<Wt::WAnimation>(m, "WAnimation",
+        "Describes a show / hide transition. Pass to WWidget.animate_show\n"
+        "and animate_hide (or use as the second arg to a setHidden overload\n"
+        "for animated visibility changes). An empty WAnimation means 'no\n"
+        "transition'; otherwise pick an AnimationEffect, optionally a\n"
+        "TimingFunction, and a duration in milliseconds.\n"
+        "\n"
+        "    panel.animate_show(wt.WAnimation(\n"
+        "        wt.AnimationEffect.SlideInFromBottom,\n"
+        "        wt.TimingFunction.EaseOut, 300))\n"
+        "\n"
+        "Effects can be OR'd together (`SlideInFromLeft | Fade`) to\n"
+        "combine motion with a fade.")
         .def(nb::init<>(),
             "Default — an empty animation (no transition).")
         .def("__init__",
@@ -128,7 +153,8 @@ void register_value_types(nb::module_& m) {
             // definition — we expose only the enum form.
             [](Wt::WAnimation& self, Wt::TimingFunction f) {
                 self.setTimingFunction(f);
-            })
+            },
+            "The TimingFunction (easing curve) the animation uses.")
         .def_prop_ro("empty", &Wt::WAnimation::empty,
             "True for the default (no-effect) animation.");
 }

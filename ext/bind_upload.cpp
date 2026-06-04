@@ -13,7 +13,14 @@ void register_upload(nb::module_& m) {
     // request is destroyed (or call WFileUpload.steal_spooled_file to take
     // ownership and prevent Wt from cleaning it up).
 
-    nb::class_<Wt::Http::UploadedFile>(m, "UploadedFile")
+    nb::class_<Wt::Http::UploadedFile>(m, "UploadedFile",
+        "One file's worth of metadata + on-disk path for an upload\n"
+        "delivered through WFileUpload (or returned by\n"
+        "WFileDropWidget.File.uploaded_file). The bytes live in a Wt-\n"
+        "managed temp file at `spool_file_name`; read or move them before\n"
+        "the request that produced this record is torn down — Wt deletes\n"
+        "the temp file as part of its cleanup unless\n"
+        "`WFileUpload.steal_spooled_file` has been called.")
         .def_prop_ro("spool_file_name",
             [](const Wt::Http::UploadedFile& f) { return f.spoolFileName(); },
             "Filesystem path to the spooled temp file holding the upload's "
@@ -42,8 +49,28 @@ void register_upload(nb::module_& m) {
     // bytes), and `data_received` (Uint64PairSignal — fires periodically
     // during a long upload with (received, total) byte counts).
 
-    nb::class_<Wt::WFileUpload, Wt::WWidget>(m, "WFileUpload")
-        .def(heap_init<Wt::WFileUpload>())
+    nb::class_<Wt::WFileUpload, Wt::WWidget>(m, "WFileUpload",
+        "Classic HTML file-input widget — a button + filename label.\n"
+        "Pick a file, call `upload()` (typically right out of the\n"
+        "`changed` signal), then read the bytes from `spool_file_name`\n"
+        "when `uploaded` fires.\n"
+        "\n"
+        "    up = container.add_widget(wt.WFileUpload())\n"
+        "    def kick_off():\n"
+        "        up.upload()\n"
+        "    def on_done():\n"
+        "        if not up.empty:\n"
+        "            shutil.copy(up.spool_file_name, '/store/last')\n"
+        "    up.changed.connect(kick_off)\n"
+        "    up.uploaded.connect(on_done)\n"
+        "\n"
+        "Set `multiple = True` and walk `uploaded_files` instead of\n"
+        "`spool_file_name` for multi-file uploads. The bytes land in a\n"
+        "temp file Wt cleans up after the request; copy/move them\n"
+        "elsewhere before that happens. For drag-and-drop or queue-style\n"
+        "uploads use WFileDropWidget instead.")
+        .def(heap_init<Wt::WFileUpload>(),
+             "Construct an empty single-file uploader.")
         .def_prop_rw("multiple",
             &Wt::WFileUpload::multiple,
             &Wt::WFileUpload::setMultiple,

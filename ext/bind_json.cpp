@@ -149,10 +149,19 @@ void register_json(nb::module_& m) {
     // The convenient construction path: pass a Python dict; nested
     // dicts / lists / primitives are recursed automatically.
 
-    nb::class_<Wt::Json::Object>(json, "Object")
+    nb::class_<Wt::Json::Object>(json, "Object",
+        "Wt's JSON object — a string-keyed map of Json.Value. Bridges to\n"
+        "Python via `Object(dict)` for construction and `.to_dict()` for\n"
+        "reading. Values nest recursively (dicts and lists in, dicts and\n"
+        "lists out).\n"
+        "\n"
+        "    payload = wt.Json.Object({'name': 'Ada', 'tags': ['admin']})\n"
+        "    payload.contains('name')              # True\n"
+        "    payload.to_dict()                     # round-trips")
         .def("__init__", [](Wt::Json::Object* self) {
             new (self) Wt::Json::Object();
-        })
+        },
+            "Default-construct an empty JSON object.")
         .def("__init__",
             [](Wt::Json::Object* self, nb::dict d) {
                 new (self) Wt::Json::Object();
@@ -165,14 +174,17 @@ void register_json(nb::module_& m) {
             "Construct from a Python dict. Values can be None / bool / int "
             "/ float / str / nested dict / nested list.")
         .def_prop_ro("empty",
-            [](const Wt::Json::Object& o) { return o.empty(); })
+            [](const Wt::Json::Object& o) { return o.empty(); },
+            "True when the object has no keys.")
         .def("__len__",
-            [](const Wt::Json::Object& o) { return o.size(); })
+            [](const Wt::Json::Object& o) { return o.size(); },
+            "Number of keys in the object.")
         .def("contains",
             [](const Wt::Json::Object& o, const std::string& name) {
                 return o.contains(name);
             },
-            "name"_a)
+            "name"_a,
+            "True if `name` is a key in the object.")
         .def("to_dict",
             // Round-trip back to a Python dict.
             [](const Wt::Json::Object& o) {
@@ -186,10 +198,18 @@ void register_json(nb::module_& m) {
 
     // ---- Json::Array ----
 
-    nb::class_<Wt::Json::Array>(json, "Array")
+    nb::class_<Wt::Json::Array>(json, "Array",
+        "Wt's JSON array — an ordered list of Json.Value. Mirror of\n"
+        "Json.Object on the sequence side: construct from a Python list,\n"
+        "read back with `.to_list()`.\n"
+        "\n"
+        "    tags = wt.Json.Array(['admin', 'editor', 'viewer'])\n"
+        "    len(tags)                              # 3\n"
+        "    tags.to_list()                         # ['admin', ...]")
         .def("__init__", [](Wt::Json::Array* self) {
             new (self) Wt::Json::Array();
-        })
+        },
+            "Default-construct an empty JSON array.")
         .def("__init__",
             [](Wt::Json::Array* self, nb::list items) {
                 new (self) Wt::Json::Array();
@@ -201,7 +221,8 @@ void register_json(nb::module_& m) {
             "Construct from a Python list. Items can be any JSON-compatible "
             "Python value (same set as Object accepts).")
         .def("__len__",
-            [](const Wt::Json::Array& a) { return a.size(); })
+            [](const Wt::Json::Array& a) { return a.size(); },
+            "Number of elements in the array.")
         .def("to_list",
             [](const Wt::Json::Array& a) {
                 nb::list l;
@@ -209,14 +230,26 @@ void register_json(nb::module_& m) {
                     l.append(json_value_to_py(v));
                 }
                 return l;
-            });
+            },
+            "Recursive Python-native view of this Array.");
 
     // ---- Json::Value ----
     //
     // The polymorphic JSON value. Construct from any Python value; read
     // the contained payload via `.type` plus `.to_python()`.
 
-    nb::class_<Wt::Json::Value>(json, "Value")
+    nb::class_<Wt::Json::Value>(json, "Value",
+        "Polymorphic JSON value. Holds one of: null, bool, number,\n"
+        "string, object, or array (see Json.Type). Convert from any\n"
+        "JSON-compatible Python value at construction; read back with\n"
+        "`.to_python()`.\n"
+        "\n"
+        "    v = wt.Json.Value({'n': 1, 'xs': [1, 2, 3]})\n"
+        "    v.type                                 # Type.Object\n"
+        "    v.to_python()                          # {'n': 1.0, ...}\n"
+        "\n"
+        "Numbers always come back as Python floats — see the parent\n"
+        "submodule docstring for the lossy int/float caveat.")
         .def(nb::init<>(),
             "Default-construct a Null value.")
         .def("__init__",
@@ -229,9 +262,12 @@ void register_json(nb::module_& m) {
             "Construct from a Python value. Pass any JSON-compatible "
             "Python value (None / bool / int / float / str / dict / list).")
         .def_prop_ro("type",
-            [](const Wt::Json::Value& v) { return v.type(); })
+            [](const Wt::Json::Value& v) { return v.type(); },
+            "The Json.Type tag of the contained value.")
         .def_prop_ro("is_null",
-            [](const Wt::Json::Value& v) { return v.isNull(); })
+            [](const Wt::Json::Value& v) { return v.isNull(); },
+            "True when this value is JSON null. Equivalent to\n"
+            "`type == Type.Null`.")
         .def("to_python",
             [](const Wt::Json::Value& v) { return json_value_to_py(v); },
             "Recursive Python-native view of this Value.");
@@ -269,7 +305,9 @@ void register_json(nb::module_& m) {
         [](const Wt::Json::Array& arr, int indentation) {
             return Wt::Json::serialize(arr, indentation);
         },
-        "arr"_a, "indentation"_a = 1);
+        "arr"_a, "indentation"_a = 1,
+        "Serialize a Json.Array to a JSON string. Counterpart of\n"
+        "`serialize` for top-level array documents.");
 
     // ---- Free-standing converters (Python dict ⇄ Json::Object) ----
     //

@@ -17,7 +17,11 @@ void register_event_payloads(nb::module_& m) {
     // WTouchEvent. We expose it as `wt.Touch` for the natural cross-
     // reference from WTouchEvent.touches/target_touches/changed_touches.
 
-    nb::class_<Wt::Touch>(m, "Touch")
+    nb::class_<Wt::Touch>(m, "Touch",
+        "A single finger contact on a touch-capable device. Bundled\n"
+        "inside the `touches` / `target_touches` / `changed_touches`\n"
+        "lists on a WTouchEvent. Read the four coordinate accessors to\n"
+        "get the contact position in different reference frames.")
         .def("document", &Wt::Touch::document,
              "Touch position relative to the document, as Coordinates.")
         .def("window", &Wt::Touch::window,
@@ -35,7 +39,11 @@ void register_event_payloads(nb::module_& m) {
     // not yet bound. The class is exposed so user code that receives one
     // via a future binding can read it.
 
-    nb::class_<Wt::WTouchEvent>(m, "WTouchEvent")
+    nb::class_<Wt::WTouchEvent>(m, "WTouchEvent",
+        "Payload delivered to touch-related event signals. Splits the\n"
+        "active touches into three views: every finger on the screen,\n"
+        "only the fingers whose touch started on the target widget, and\n"
+        "the subset of fingers that changed state in the event firing.")
         .def_prop_ro("touches",
             [](const Wt::WTouchEvent& e) { return e.touches(); },
             "List[Touch] — every finger currently touching the screen.")
@@ -51,17 +59,31 @@ void register_event_payloads(nb::module_& m) {
     // Pinch / rotate gestures. `scale` is relative to 1 (>1 = pinch out);
     // `rotation` is degrees relative to the start of the gesture.
 
-    nb::class_<Wt::WGestureEvent>(m, "WGestureEvent")
-        .def_prop_ro("scale", &Wt::WGestureEvent::scale)
-        .def_prop_ro("rotation", &Wt::WGestureEvent::rotation);
+    nb::class_<Wt::WGestureEvent>(m, "WGestureEvent",
+        "Payload for multi-touch pinch and rotate gestures. `scale`\n"
+        "compares the current finger spread to the start of the gesture\n"
+        "(1.0 means unchanged, >1 a pinch-out, <1 a pinch-in); `rotation`\n"
+        "is the angular delta in degrees.")
+        .def_prop_ro("scale", &Wt::WGestureEvent::scale,
+            "Pinch scale relative to the gesture's start (1.0 = no\n"
+            "change, >1 zoomed out, <1 zoomed in).")
+        .def_prop_ro("rotation", &Wt::WGestureEvent::rotation,
+            "Rotation in degrees relative to the gesture's start.");
 
     // ---- WScrollEvent ----
 
-    nb::class_<Wt::WScrollEvent>(m, "WScrollEvent")
-        .def_prop_ro("scroll_x", &Wt::WScrollEvent::scrollX)
-        .def_prop_ro("scroll_y", &Wt::WScrollEvent::scrollY)
-        .def_prop_ro("viewport_width", &Wt::WScrollEvent::viewportWidth)
-        .def_prop_ro("viewport_height", &Wt::WScrollEvent::viewportHeight);
+    nb::class_<Wt::WScrollEvent>(m, "WScrollEvent",
+        "Payload for scroll-position changes. Reports the current scroll\n"
+        "offset of the scrolling element together with the viewport\n"
+        "dimensions, all in CSS pixels.")
+        .def_prop_ro("scroll_x", &Wt::WScrollEvent::scrollX,
+            "Horizontal scroll offset in pixels.")
+        .def_prop_ro("scroll_y", &Wt::WScrollEvent::scrollY,
+            "Vertical scroll offset in pixels.")
+        .def_prop_ro("viewport_width", &Wt::WScrollEvent::viewportWidth,
+            "Visible viewport width in pixels.")
+        .def_prop_ro("viewport_height", &Wt::WScrollEvent::viewportHeight,
+            "Visible viewport height in pixels.");
 
     // ---- WDropEvent ----
     //
@@ -74,12 +96,21 @@ void register_event_payloads(nb::module_& m) {
         .value("Mouse", Wt::WDropEvent::OriginalEventType::Mouse)
         .value("Touch", Wt::WDropEvent::OriginalEventType::Touch);
 
-    nb::class_<Wt::WDropEvent>(m, "WDropEvent")
+    nb::class_<Wt::WDropEvent>(m, "WDropEvent",
+        "Payload delivered to a target widget when something is dropped\n"
+        "on it. Carries a reference to the source object, the MIME type\n"
+        "of the dragged data, and the underlying pointer event — either\n"
+        "a WMouseEvent or a WTouchEvent depending on the input device.\n"
+        "\n"
+        "Inspect `event_type` first to decide which of `mouse_event` /\n"
+        "`touch_event` is populated; the other is None.")
         .def_prop_ro("source", &Wt::WDropEvent::source,
             "The WObject that was the drag source. Don't outlive the slot "
             "call — the pointer's lifetime is the source widget's.")
         .def_prop_ro("mime_type",
-            [](const Wt::WDropEvent& e) -> std::string { return e.mimeType(); })
+            [](const Wt::WDropEvent& e) -> std::string { return e.mimeType(); },
+            "MIME type of the dragged data, as published by the drag\n"
+            "source.")
         .def_prop_ro("event_type", &Wt::WDropEvent::originalEventType,
             "DropEventOriginalEventType — whether the drop originated from "
             "a mouse or a touch event.")
