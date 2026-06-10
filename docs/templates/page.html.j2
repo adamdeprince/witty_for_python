@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{ page_title }} — witty_for_python</title>
+<title>{% if page_title == "witty_for_python" %}witty_for_python{% else %}{{ page_title }} — witty_for_python{% endif %}</title>
 <link rel="stylesheet" href="{{ root }}assets/style.css">
 {%- if page_kind == "topic" %}
 <link rel="canonical" href="{{ root }}api/{{ topic_id }}.html">
@@ -12,7 +12,11 @@
 <body>
 
 <header class="site-header">
+  {%- if page_kind == "home" %}
+  <a class="site-name" href="{{ root }}assets/goblin-workshop.png">witty_for_python</a>
+  {%- else %}
   <a class="site-name" href="{{ root }}index.html">witty_for_python</a>
+  {%- endif %}
   <nav class="site-nav">
     <a href="{{ root }}index.html"{% if page_kind == "home" %} class="active"{% endif %}>Home</a>
     <a href="{{ root }}api/index.html"{% if page_kind in ("api-index", "topic") %} class="active"{% endif %}>API</a>
@@ -55,9 +59,7 @@
 
 <footer class="site-footer">
   <p>
-    Generated from <code>ext/bind_*.cpp</code> docstrings via the .pyi stubs.
-    Regenerate with <code>scripts/build_docs.py</code> then
-    <code>scripts/build_html.py</code>.
+    Created by <a href="https://adamdeprince.com">Adam DePrince</a>.
   </p>
 </footer>
 

@@ -51,7 +51,28 @@ def pandoc_to_html(md_text: str) -> str:
          "--no-highlight"],
         input=md_text, capture_output=True, text=True, check=True,
     )
-    return result.stdout
+    return cleanup_md_links(result.stdout)
+
+
+# Rewrites `<a href="X.md">Y</a>` → `<a href="X.html">Y</a>` and strips a
+# trailing `.md` from the visible text. The .md extension is a Markdown
+# implementation detail; in the rendered HTML it's nonsense ("read
+# threading.md" reads like a filesystem listing, not a sentence).
+_LINK_RE = re.compile(r'<a\b([^>]*)>([^<]*)</a>', re.IGNORECASE)
+_HREF_MD_RE = re.compile(
+    r'(href=")([^"]+?)\.md(#[^"]*)?(")', re.IGNORECASE
+)
+
+
+def cleanup_md_links(html: str) -> str:
+    def fix(m: re.Match[str]) -> str:
+        attrs = _HREF_MD_RE.sub(r'\1\2.html\3\4', m.group(1))
+        body = m.group(2)
+        # Drop trailing .md from visible text; leave inline mentions alone.
+        if body.endswith(".md"):
+            body = body[:-3]
+        return f"<a{attrs}>{body}</a>"
+    return _LINK_RE.sub(fix, html)
 
 
 CLASS_HEADER_RE = re.compile(r'<h3 id="([^"]+)">([^<]+)</h3>')
@@ -99,8 +120,9 @@ def build_home(env) -> str:
     """
     overview = DOCS_DIR / "overview.md"
     if overview.exists():
-        body = pandoc_to_html(overview.read_text(encoding="utf-8"))
-        title = title_from_md(overview.read_text(encoding="utf-8"), "witty_for_python")
+        md = overview.read_text(encoding="utf-8")
+        body = pandoc_to_html(md)
+        title = title_from_md(md, "witty_for_python")
     else:
         body = pandoc_to_html(
             "# witty_for_python\n\n"
@@ -110,6 +132,22 @@ def build_home(env) -> str:
         title = "witty_for_python"
     return render_page(env, page_kind="home", page_title=title,
                        body_html=body, root="")
+
+
+def build_sibling_doc(env, md_path: Path) -> tuple[str, str]:
+    """Render one top-level docs/<name>.md as its own HTML page.
+
+    Returns (output_filename, rendered_html). overview.md is handled by
+    build_home (lands at index.html); every other .md becomes <name>.html
+    so the home page's `[threading.md](threading.md)` links resolve.
+    """
+    md = md_path.read_text(encoding="utf-8")
+    body = pandoc_to_html(md)
+    title = title_from_md(md, md_path.stem)
+    out_name = md_path.stem + ".html"
+    rendered = render_page(env, page_kind="doc", page_title=title,
+                           body_html=body, root="")
+    return out_name, rendered
 
 
 def build_api_index(env) -> str:
@@ -156,18 +194,39 @@ def build() -> None:
         (OUT_DIR / "api" / f"{topic['id']}.html").write_text(
             build_topic(env, topic), encoding="utf-8")
 
+    # Sibling docs (binding_design.md, threading.md, building_wt.md,
+    # signal_slot.md, deferred.md, …). The home page links to them as
+    # `[name.md](name.md)`; we land each as `<name>.html` next to index.html.
+    skip = {"overview.md"}  # already rendered as the home page
+    n_siblings = 0
+    for md in sorted(DOCS_DIR.glob("*.md")):
+        if md.name in skip:
+            continue
+        out_name, rendered = build_sibling_doc(env, md)
+        (OUT_DIR / out_name).write_text(rendered, encoding="utf-8")
+        n_siblings += 1
+
     # Assets (verbatim copy).
     style_src = TEMPLATES_DIR / "style.css"
     if style_src.exists():
         shutil.copy(style_src, OUT_DIR / "assets" / "style.css")
 
-    # Copy any easter-egg or doc-illustration PNGs under docs/api/img/ →
-    # html/assets/img/ (paths in .md should match).
+    # Static assets — header image, easter eggs, illustrations. Everything
+    # under docs/assets/ gets mirrored into html/assets/. LFS-tracked PNGs
+    # via .gitattributes' docs/**/*.png rule.
+    assets_src = DOCS_DIR / "assets"
+    if assets_src.is_dir():
+        for f in assets_src.iterdir():
+            if f.is_file():
+                shutil.copy(f, OUT_DIR / "assets" / f.name)
+
+    # Per-topic illustrations under docs/api/img/ → html/assets/img/.
     img_src = API_DIR / "img"
     if img_src.is_dir():
         shutil.copytree(img_src, OUT_DIR / "assets" / "img")
 
-    print(f"Built site in {OUT_DIR} ({len(TOPICS)} topic pages + index + home)")
+    print(f"Built site in {OUT_DIR} ("
+          f"{len(TOPICS)} topic pages + {n_siblings} sibling docs + index + home)")
 
 
 def main() -> int:

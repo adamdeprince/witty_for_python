@@ -1,6 +1,10 @@
-# witty_for_python — overview
+# witty_for_python
 
-A nanobind-based Python binding for [Wt](https://www.webtoolkit.eu/wt) — Emweb's C++ widget-tree web framework. You write a Python factory that returns a `WApplication`; Wt's session manager owns the widget tree from that point on.
+**witty_for_python** wraps the [Wt (Web Toolkit)](https://www.webtoolkit.eu/wt) C++ widget framework as a Python library. You build server-side web apps the way you'd build a desktop app — widget trees (`WContainerWidget`, `WPushButton`), signal/slot wiring, MVC models, validators, painting, charts — and Wt handles every browser round-trip transparently: DOM diffs over the wire, progressive JavaScript enhancement, real-time server push. There are no HTML templates to maintain, no separate JavaScript client to keep in sync, and no manual WebSocket plumbing for live updates. Reach for it when you want real per-session server state without cookie-and-Redis stitching, type-checked Python all the way to the browser boundary, and a single-wheel deploy — Wt 4.13 is bundled inside the wheel, no system install required.
+
+Built with [nanobind](https://github.com/wjakob/nanobind). You write a Python factory that returns a `WApplication`; Wt's session manager owns the widget tree from that point on.
+
+> **Independent, unofficial wrapper.** witty_for_python is a personal project by [Adam DePrince](https://adamdeprince.com). It is **not** produced by, endorsed by, sponsored by, or otherwise affiliated with Emweb bv, the authors and copyright holders of Wt. "Wt" is referenced here only in its descriptive sense — to identify the library this software wraps — and remains the property of Emweb. For Wt itself (source, official binaries, support, commercial licensing), go directly to [www.webtoolkit.eu/wt](https://www.webtoolkit.eu/wt).
 
 ## Why this project exists
 
