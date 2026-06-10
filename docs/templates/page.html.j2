@@ -1,67 +1,48 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% if page_title == "witty_for_python" %}witty_for_python{% else %}{{ page_title }} — witty_for_python{% endif %}</title>
+<meta name="description" content="Python bindings for the Wt (Web Toolkit) C++ widget framework.">
+<link rel="icon" href="{{ root }}assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="{{ root }}assets/favicon-32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="{{ root }}assets/favicon-16.png" sizes="16x16">
+<link rel="apple-touch-icon" href="{{ root }}assets/apple-touch-icon.png" sizes="180x180">
+<link rel="manifest" href="{{ root }}assets/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ root }}assets/style.css">
-{%- if page_kind == "topic" %}
-<link rel="canonical" href="{{ root }}api/{{ topic_id }}.html">
-{%- endif %}
 </head>
 <body>
+<div class="page">
 
-<header class="site-header">
+<header class="masthead">
   {%- if page_kind == "home" %}
-  <a class="site-name" href="{{ root }}assets/goblin-workshop.png">witty_for_python</a>
+  <h1><a href="{{ root }}assets/goblin-workshop.png">witty_for_python</a></h1>
+  <p class="tagline">Python bindings for the Wt (Web Toolkit) C++ widget framework</p>
   {%- else %}
-  <a class="site-name" href="{{ root }}index.html">witty_for_python</a>
+  <h1>{{ page_title }}</h1>
+  <p class="tagline"><a href="{{ root }}index.html">witty_for_python</a> documentation</p>
   {%- endif %}
-  <nav class="site-nav">
-    <a href="{{ root }}index.html"{% if page_kind == "home" %} class="active"{% endif %}>Home</a>
-    <a href="{{ root }}api/index.html"{% if page_kind in ("api-index", "topic") %} class="active"{% endif %}>API</a>
-    <a href="https://github.com/adamdeprince/witty_for_python">GitHub</a>
-    <a href="https://pypi.org/project/witty-for-python/">PyPI</a>
-  </nav>
 </header>
 
-<div class="page-wrap">
-
-{%- if page_kind in ("api-index", "topic") %}
-<aside class="api-sidebar">
-  <h2>Topics</h2>
-  <ul>
-  {%- for t in topics %}
-    <li>
-      <a href="{{ root }}api/{{ t.id }}.html"
-         {% if t.id == topic_id %}class="current"{% endif %}>
-        {{ t.title }}
-      </a>
-    </li>
-  {%- endfor %}
-  </ul>
-  {%- if page_kind == "topic" and class_anchors %}
-  <h2>{{ page_title }}</h2>
-  <ul class="class-jump">
-  {%- for c in class_anchors %}
-    <li><a href="#{{ c.anchor }}"><code>{{ c.name }}</code></a></li>
-  {%- endfor %}
-  </ul>
-  {%- endif %}
-</aside>
-{%- endif %}
+<nav class="nav">
+  <a href="{{ root }}index.html"{% if page_kind == "home" %} class="active"{% endif %}>Home</a>
+  <a href="{{ root }}api/index.html"{% if page_kind in ("api-index", "topic") %} class="active"{% endif %}>API</a>
+  <a href="https://github.com/adamdeprince/witty_for_python" rel="noopener">Source Code</a>
+  <a href="https://pypi.org/project/witty-for-python/" rel="noopener">PyPI</a>
+</nav>
 
 <main class="content">
 {{ body | safe }}
 </main>
 
-</div>
-
-<footer class="site-footer">
-  <p>
-    Created by <a href="https://adamdeprince.com">Adam DePrince</a>.
-  </p>
+<footer class="footer">
+  <p>Created by <a href="https://adamdeprince.com">Adam DePrince</a>.</p>
 </footer>
 
+</div>
 </body>
 </html>
