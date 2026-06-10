@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ page_title }} — witty_for_python</title>
+<link rel="stylesheet" href="{{ root }}assets/style.css">
+{%- if page_kind == "topic" %}
+<link rel="canonical" href="{{ root }}api/{{ topic_id }}.html">
+{%- endif %}
+</head>
+<body>
+
+<header class="site-header">
+  <a class="site-name" href="{{ root }}index.html">witty_for_python</a>
+  <nav class="site-nav">
+    <a href="{{ root }}index.html"{% if page_kind == "home" %} class="active"{% endif %}>Home</a>
+    <a href="{{ root }}api/index.html"{% if page_kind in ("api-index", "topic") %} class="active"{% endif %}>API</a>
+    <a href="https://github.com/adamdeprince/witty_for_python">GitHub</a>
+    <a href="https://pypi.org/project/witty-for-python/">PyPI</a>
+  </nav>
+</header>
+
+<div class="page-wrap">
+
+{%- if page_kind in ("api-index", "topic") %}
+<aside class="api-sidebar">
+  <h2>Topics</h2>
+  <ul>
+  {%- for t in topics %}
+    <li>
+      <a href="{{ root }}api/{{ t.id }}.html"
+         {% if t.id == topic_id %}class="current"{% endif %}>
+        {{ t.title }}
+      </a>
+    </li>
+  {%- endfor %}
+  </ul>
+  {%- if page_kind == "topic" and class_anchors %}
+  <h2>{{ page_title }}</h2>
+  <ul class="class-jump">
+  {%- for c in class_anchors %}
+    <li><a href="#{{ c.anchor }}"><code>{{ c.name }}</code></a></li>
+  {%- endfor %}
+  </ul>
+  {%- endif %}
+</aside>
+{%- endif %}
+
+<main class="content">
+{{ body | safe }}
+</main>
+
+</div>
+
+<footer class="site-footer">
+  <p>
+    Generated from <code>ext/bind_*.cpp</code> docstrings via the .pyi stubs.
+    Regenerate with <code>scripts/build_docs.py</code> then
+    <code>scripts/build_html.py</code>.
+  </p>
+</footer>
+
+</body>
+</html>

@@ -42,3 +42,8 @@ env/
 *.swp
 *.swo
 .DS_Store
+
+# Generated HTML documentation (rebuild via scripts/build_html.py)
+html/
+# Doc-build local artefacts
+docs/api/.pandoc_cache/

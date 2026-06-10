@@ -1,1 +1,10 @@
 examples/*.png filter=lfs diff=lfs merge=lfs -text
+
+# Doc artwork — easter eggs, illustrations, page banners, anything PNG/JPG
+# under docs/ goes through Git LFS so the source tree stays small and
+# binary-clean. Keep SVGs as plain text (they're authoring-friendly XML).
+docs/**/*.png filter=lfs diff=lfs merge=lfs -text
+docs/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+docs/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+docs/**/*.gif filter=lfs diff=lfs merge=lfs -text
+docs/**/*.webp filter=lfs diff=lfs merge=lfs -text
